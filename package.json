@@ -10,7 +10,9 @@
     "rollup-plugin-elm": "^3.0.0",
     "uglify-js": "^3.14.5"
   },
-  "scripts": {},
+  "scripts": {
+    "build": "bash -xc 'mkdir -vp out/ && cp -va ./public/release.html ./out/index.html && cp -va ./public/app.min.js ./out && find out/ -ls '"
+  },
   "repository": {
     "type": "git",
     "url": "https://gitlab.laixi.pro/zxygentoo/thespace"
