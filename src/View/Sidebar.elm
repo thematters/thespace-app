@@ -9,7 +9,6 @@ import Config
         , sidebarWidth
         , sidebarzIndex
         , tokenSign
-        , underPricedHelpLink
         , zeroPrice
         )
 import Contract.ERC20 exposing (allowance)
@@ -20,6 +19,7 @@ import Data
         , ColorId
         , Index
         , Pixel
+        , Price
         , RpcErrorKind(..)
         , Size
         , SortOrder(..)
@@ -49,6 +49,7 @@ import Model
         , SidebarInfoType(..)
         , SidebarMode
         , SidebarUIMode(..)
+        , TaxInfo
         )
 import Model.Assets
     exposing
@@ -216,8 +217,8 @@ scrollArea scrollH items infList itemView msg =
 -- Views
 
 
-viewSidebar : SidebarMode -> Size -> WalletInfo -> List Activity -> Assets -> SidebarInfLists -> Html Msg
-viewSidebar ( uiMode, infoType ) winSize wallet acts assets { actsInfList, assetsInfList } =
+viewSidebar : SidebarMode -> Size -> WalletInfo -> List Activity -> Assets -> SidebarInfLists -> TaxInfo -> Html Msg
+viewSidebar ( uiMode, infoType ) winSize wallet acts assets { actsInfList, assetsInfList } { mintTax } =
     let
         modalW =
             sidebarWidth
@@ -272,7 +273,7 @@ viewSidebar ( uiMode, infoType ) winSize wallet acts assets { actsInfList, asset
                     ]
                 , let
                     acts_ =
-                        viewActs modalH wallet actsInfList acts
+                        viewActs modalH wallet mintTax actsInfList acts
 
                     assets_ =
                         viewAssets modalH wallet assetsInfList assets
@@ -501,8 +502,8 @@ switch wallet activeInfoType assets =
         ]
 
 
-viewActs : Float -> WalletInfo -> Inf.Model -> List Activity -> Html Msg
-viewActs modalH wallet actsInfList acts =
+viewActs : Float -> WalletInfo -> Maybe Price -> Inf.Model -> List Activity -> Html Msg
+viewActs modalH wallet mintTax actsInfList acts =
     if List.length acts == 0 then
         placeholder <| [ textDiv "No new activity recieved yet." ]
 
@@ -512,13 +513,13 @@ viewActs modalH wallet actsInfList acts =
                 modalH - heightWithoutLogs - edge
 
             itemView =
-                \_ _ act -> viewActEntry wallet act |> toUnstyled
+                \_ _ act -> viewActEntry wallet mintTax act |> toUnstyled
         in
         scrollArea scrollH acts actsInfList itemView ScrollActivity
 
 
-viewActEntry : WalletInfo -> Activity -> Html Msg
-viewActEntry wallet log =
+viewActEntry : WalletInfo -> Maybe Price -> Activity -> Html Msg
+viewActEntry wallet mintTax log =
     let
         style_ =
             [ displayFlex
@@ -562,19 +563,6 @@ viewActEntry wallet log =
         ln es =
             div [ css lineStyle ] es
 
-        defaultLog idx from_ =
-            let
-                fromYou =
-                    if walletIsAddress wallet from_ then
-                        ln [ grayDiv "from", addr from_ ]
-
-                    else
-                        phantomDiv
-            in
-            [ ln [ coords idx, grayDiv "defaulted", fromYou, grayDiv "by" ]
-            , ln [ grayDiv "TheSpace" ]
-            ]
-
         transferLog idx from_ to_ p =
             [ if walletIsAddress wallet from_ then
                 ln [ coords idx, grayDiv "bought from", addr from_ ]
@@ -608,6 +596,18 @@ viewActEntry wallet log =
             [ ln [ addr coller, grayDiv "collected", coords idx ]
             , ln [ priceTag amt ]
             ]
+
+        defaultLog idx from_ =
+            let
+                defaultLn =
+                    ln [ coords idx, grayDiv "defaulted from", addr from_ ]
+            in
+            case mintTax of
+                Just p ->
+                    [ defaultLn, ln [ grayDiv "to", priceTag p ] ]
+
+                Nothing ->
+                    [ defaultLn ]
 
         requestLog idx =
             [ ln [ grayDiv "Request sent for", coords idx ] ]
@@ -656,11 +656,7 @@ viewActEntry wallet log =
             div
                 [ cssLog removed ]
             <|
-                if to == zeroAddress then
-                    defaultLog index from
-
-                else
-                    transferLog index from to amount
+                transferLog index from to amount
 
         ColorAct { index, color, owner, removed } ->
             div
@@ -683,6 +679,9 @@ viewActEntry wallet log =
 
         UbiAct { index, collector, amount, removed } ->
             div [ cssLog removed ] <| incomeLog index collector amount
+
+        DefaultAct { from, index, removed } ->
+            div [ cssLog removed ] <| defaultLog index from
 
         TxSendAct index ->
             div [ cssLog False ] <| requestLog index

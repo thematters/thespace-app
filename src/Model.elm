@@ -197,6 +197,7 @@ type alias WatchIds =
     , transfer : Maybe SubId
     , tax : Maybe SubId
     , ubi : Maybe SubId
+    , default : Maybe SubId
     }
 
 
@@ -265,6 +266,7 @@ initWatchIds =
     , transfer = Nothing
     , tax = Nothing
     , ubi = Nothing
+    , default = Nothing
     }
 
 

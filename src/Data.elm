@@ -146,6 +146,7 @@ type Activity
     | TransferAct TransferEvent
     | TaxAct TaxEvent
     | UbiAct UbiEvent
+    | DefaultAct RegistryTransferEvent
     | TxSendAct Index
     | ActError RpcErrorData
 
@@ -196,6 +197,15 @@ type alias UbiEvent =
     }
 
 
+type alias RegistryTransferEvent =
+    { blockNumber : Int
+    , from : Address
+    , to : Address
+    , index : Int
+    , removed : Bool
+    }
+
+
 type WalletInfo
     = DetectingWallet
     | NoWallet
@@ -224,20 +234,6 @@ type AbbrType
     | AbbrLong
 
 
-
---type alias RpcProvider =
---    { chainId : Int
---    , chainName : String
---    , nativeCurrency :
---        { name : String
---        , symbol : String
---        , decimals : Int
---        }
---    , rpcUrls : List String
---    , blockExplorerUrls : List String
---    }
-
-
 type RpcResult
     = RpcInitMap Snapshot
     | RpcNewHeadsSubId SubId
@@ -246,6 +242,7 @@ type RpcResult
     | RpcTransferSubId SubId
     | RpcTaxSubId SubId
     | RpcUbiSubId SubId
+    | RpcDefaultSubId SubId
     | RpcNewHead BlockNumber
     | RpcTaxRate TaxRate
     | RpcTreasuryShare TreasuryShare
@@ -260,6 +257,7 @@ type RpcResult
     | RpcTransferEvent TransferEvent
     | RpcTaxEvent TaxEvent
     | RpcUbiEvent UbiEvent
+    | RpcRegistryTransferEvent RegistryTransferEvent
     | RpcPixel Pixel
     | RpcOwnPixels OwnPixelsResultPage
     | RpcTokenInfo TokenInfo
@@ -308,10 +306,12 @@ type RpcErrorKind
 -- Map
 
 
+inc : Int -> Int
 inc i =
     i + 1
 
 
+dec : Int -> Int
 dec i =
     i - 1
 
@@ -865,6 +865,9 @@ sortActs actLogs =
                         evt.blockNumber
 
                     UbiAct evt ->
+                        evt.blockNumber
+
+                    DefaultAct evt ->
                         evt.blockNumber
 
                     TxSendAct idx ->

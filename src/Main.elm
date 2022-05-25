@@ -996,6 +996,7 @@ handleRpcMessageRecieved model msg =
                 , Rpc.watchTransfer
                 , Rpc.watchTax
                 , Rpc.watchUbi
+                , Rpc.watchDefault
                 , Rpc.getAccount
                 , Rpc.getTaxRate
                 , Rpc.getMintTax
@@ -1064,6 +1065,15 @@ handleRpcMessageRecieved model msg =
                     model.watchIds
             in
             ( { model | watchIds = { watchIds | ubi = Just subId } }
+            , Cmd.none
+            )
+
+        RpcDefaultSubId subId ->
+            let
+                watchIds =
+                    model.watchIds
+            in
+            ( { model | watchIds = { watchIds | default = Just subId } }
             , Cmd.none
             )
 
@@ -1502,6 +1512,36 @@ handleRpcMessageRecieved model msg =
                             m2
             in
             ( newModel, Cmd.none )
+
+        RpcRegistryTransferEvent rt ->
+            let
+                m =
+                    { model | acts = DefaultAct rt :: model.acts }
+            in
+            ( case model.selectCell of
+                LoadedCell ( { index } as pxl, _, e ) ->
+                    if rt.index == index then
+                        let
+                            cell =
+                                { pxl
+                                    | owner = rt.to
+                                    , price =
+                                        m.taxInfo.mintTax
+                                            |> Maybe.withDefault pxl.price
+                                }
+                        in
+                        { m
+                            | selectCell =
+                                LoadedCell ( cell, PickNewColor, e )
+                        }
+
+                    else
+                        m
+
+                _ ->
+                    m
+            , Cmd.none
+            )
 
         RpcTokenInfo { kind, address, amount } ->
             let
