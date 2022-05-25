@@ -1,0 +1,8 @@
+# elm stuff
+elm-stuff
+
+# npm stuff
+node_modules
+
+# intermediary compiled Elm app
+src/Native/elmapp.js

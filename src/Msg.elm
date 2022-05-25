@@ -1,0 +1,88 @@
+module Msg exposing (Msg(..))
+
+import Config.Env.Util exposing (RpcProvider)
+import Data
+    exposing
+        ( ColorId
+        , Index
+        , Position
+        , PositionWithDelta
+        , Price
+        , Size
+        , WalletInfo
+        )
+import InfiniteList
+import Json.Encode exposing (Value)
+import Model
+    exposing
+        ( AppMode
+        , CellModalMode(..)
+        , MiniMapMode
+        , SidebarInfoType(..)
+        , SidebarUIMode(..)
+        )
+import Model.Assets exposing (AssetsSort)
+
+
+type Msg
+    = NoOp
+      -- App Modes
+    | AppModeChange AppMode
+    | PlaybackSpeedChange
+    | PlaybackPause
+    | PlaybackStart
+    | PlaybackTick
+    | PlaybackSkipToStart
+    | PlaybackSkipToEnd
+    | PlaybackSlide String
+      -- MiniMap Modes
+    | MiniMapModeChange MiniMapMode
+      -- Map / MiniMap Ops
+    | WindowResize Size
+    | MapMouseDown Position
+    | MiniMapMouseDown Position
+    | MouseUp Position
+    | MouseMove PositionWithDelta
+    | ZoomIn
+    | ZoomOut
+    | ZoomInCenter
+    | ZoomOutCenter
+    | ZoomReset
+      -- Sidebar Ops
+    | SidebarModeSwitch SidebarUIMode
+    | SidebarInfoSwitch SidebarInfoType
+    | ScrollActivity InfiniteList.Model
+    | ScrollAssets InfiniteList.Model
+    | SortAssets AssetsSort
+    | LoadAssets
+    | RefreshAssets
+      -- Cell Ops
+    | SelectCell ( Index, Bool ) -- (CellIndex, CenterToCellOrNot)
+    | ClearSelectedCell
+    | SwitchTaxUbiMode CellModalMode
+    | TickColor ColorId
+    | EnterPrice Price
+    | PixelOpForward
+    | PixelOpBack
+    | SyncQuotePrice
+    | BidPixel ( Price, Price, ColorId ) -- (bidPrice, newPrice, newColor)
+    | CollectIncome Index
+      -- Wallet
+    | ConnectMetaMask
+    | SwitchWalletNetwork RpcProvider
+    | WalletInfoChanged WalletInfo
+    | WalletLocked
+    | RequestApproveAllBalance
+    | IncomeCollected
+    | IncomeCollectFailed
+    | AllowanceApproved Price
+    | AllowanceRejected
+    | TxConfirmed Index
+    | TxUnderPriced Index
+    | TxRejected Index
+    | WalletError String
+      -- Rpc
+    | RpcSocketOpened
+    | MapSnapshotInited
+    | RpcMessageRecieved Value
+    | RpcSocketClosed

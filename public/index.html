@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>TheSpace</title>
+    <head><style>body { margin: 0; overflow: hidden; }</style></head>
+<body>
+    <main></main>
+    <script src="../src/Native/elmapp.js"></script>
+    <script type="module">
+        /*
+            This is just src/Native/init.js with different import paths.
+
+            It's not DRY, and we can use rollup plugin for
+            dev time auto re-compilation, but elm-live has nicer
+            console error output and the extra bundling time is
+            just not seems worth it, and this init code
+            rarely changes anyway.
+
+            Until elm-live gets its asset loading game together, or better,
+            Evan decides to support compiling to ES6 module in Elm compiler,
+            this still seems the better way...
+        */
+        import { registerRender } from "../src/Native/canvas.js"
+        import { registerRpc } from "../src/Native/rpc.js"
+
+        const observer = new MutationObserver(mutations => {
+            if (document.querySelector(selector)) {
+                resolve(document.querySelector(selector))
+                observer.disconnect()
+            }
+        })
+
+        const waitElement = (selector) => {
+            return new Promise(resolve => {
+                if (document.querySelector(selector)) {
+                    return resolve(document.querySelector(selector))
+                }
+                observer.observe(
+                    document.body, { childList: true, subtree: true }
+                )
+            })
+        }
+
+        const param = (name) => {
+            return new URLSearchParams(window.location.search).get(name)
+        }
+
+        const initCenterCell = () => {
+            const centerX = param("cx")
+            const centerY = param("cy")
+            if (centerX !== null && centerY !== null) {
+                return { x: centerX >> 0, y: centerY >> 0 }
+            } else {
+                return null
+            }
+        }
+
+        var app = Elm.Main.init({
+            node: document.querySelector("main"),
+            flags: {
+                winW: window.innerWidth,
+                winH: window.innerHeight,
+                // cx&cy&z for init canvas transform
+                centerCell: initCenterCell(),
+                zoom: param("z") >> 0
+            }
+        })
+
+        const cvs = await waitElement("#canvas")
+        const mmmap = await waitElement("#minimap")
+        registerRender(app, cvs, mmmap)
+        registerRpc(app)
+
+        observer.disconnect()
+    </script>
+</body>
+</html>
