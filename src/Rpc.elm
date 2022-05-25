@@ -23,6 +23,7 @@ port module Rpc exposing
     , setPixel
     , switchNetwork
     , watchColor
+    , watchDefault
     , watchNewHeads
     , watchPrice
     , watchTax
@@ -34,6 +35,7 @@ import BigInt exposing (BigInt)
 import Config exposing (contracts, maxInt256, rpcSocketAddress, topics)
 import Config.Env.Util exposing (RpcProvider)
 import Contract.ERC20 as ERC20
+import Contract.Registry as Registry
 import Contract.Snapper as Snapper
 import Contract.TheSpace as Space
     exposing
@@ -71,10 +73,11 @@ import Data
         )
 import Env exposing (env)
 import Eth.Decode as ED
+import Eth.Defaults exposing (zeroAddress)
 import Eth.Encode as EE
 import Eth.Types exposing (Address, BlockId(..), Call, Hex)
 import Eth.Units exposing (EthUnit(..))
-import Eth.Utils exposing (add0x, addressToString, toAddress)
+import Eth.Utils exposing (add0x, addressToString, toAddress, unsafeToHex)
 import Hex
 import Json.Decode as D
 import Json.Encode as E exposing (Value)
@@ -122,6 +125,7 @@ type MessageId
     | WatchTransfer
     | WatchTax
     | WatchUbi
+    | WatchDefault
     | GetTaxRate
     | GetTreasuryShare
     | GetMintTax
@@ -244,6 +248,9 @@ messageIdEncoder msgId =
         WatchUbi ->
             E.string "usub"
 
+        WatchDefault ->
+            E.string "dsub"
+
         GetTaxRate ->
             E.string "tr"
 
@@ -300,6 +307,9 @@ messageIdDecoder =
 
                 "usub" ->
                     WatchUbi
+
+                "dsub" ->
+                    WatchDefault
 
                 "tr" ->
                     GetTaxRate
@@ -396,6 +406,10 @@ resultDecoder id taxRate blockNum =
         WatchUbi ->
             resHex
                 |> D.map RpcUbiSubId
+
+        WatchDefault ->
+            resHex
+                |> D.map RpcDefaultSubId
 
         GetTaxRate ->
             resBigInt
@@ -540,6 +554,10 @@ decodeEvent v =
                 res ubiDecoder
                     |> D.map RpcUbiEvent
 
+            else if subId == topics.registryTransfer then
+                res Registry.transferDecoder
+                    |> D.map RpcRegistryTransferEvent
+
             else
                 D.fail "Unknown event"
 
@@ -581,7 +599,7 @@ callAt bk msgId params =
         }
 
 
-watchEvent : MessageId -> Address -> List Hex -> Cmd msg
+watchEvent : MessageId -> Address -> List (Maybe Hex) -> Cmd msg
 watchEvent id address topics =
     send
         { method = "eth_subscribe"
@@ -590,7 +608,7 @@ watchEvent id address topics =
             [ E.string "logs"
             , E.object
                 [ ( "address", EE.address address )
-                , ( "topics", EE.topicsList (List.map Just topics) )
+                , ( "topics", EE.topicsList topics )
                 ]
             ]
         }
@@ -689,27 +707,39 @@ getBlockNumber =
 
 watchColor : Cmd msg
 watchColor =
-    watchEvent WatchColor contracts.registry [ topics.color ]
+    watchEvent WatchColor contracts.registry [ Just topics.color ]
 
 
 watchPrice : Cmd msg
 watchPrice =
-    watchEvent WatchPrice contracts.registry [ topics.price ]
+    watchEvent WatchPrice contracts.registry [ Just topics.price ]
 
 
 watchTransfer : Cmd msg
 watchTransfer =
-    watchEvent WatchTransfer contracts.registry [ topics.transfer ]
+    watchEvent WatchTransfer contracts.registry [ Just topics.transfer ]
+
+
+zeroAddressTopic : Hex
+zeroAddressTopic =
+    unsafeToHex <| "0x" ++ String.repeat 64 "0"
+
+
+watchDefault : Cmd msg
+watchDefault =
+    watchEvent WatchDefault
+        contracts.registry
+        [ Just topics.registryTransfer, Nothing, Just zeroAddressTopic ]
 
 
 watchTax : Cmd msg
 watchTax =
-    watchEvent WatchTax contracts.registry [ topics.tax ]
+    watchEvent WatchTax contracts.registry [ Just topics.tax ]
 
 
 watchUbi : Cmd msg
 watchUbi =
-    watchEvent WatchUbi contracts.registry [ topics.ubi ]
+    watchEvent WatchUbi contracts.registry [ Just topics.ubi ]
 
 
 getColorHistory : Cmd msg

@@ -30,7 +30,7 @@ view m =
                    ]
 
         infoViews =
-            [ lazy6 Sidebar.viewSidebar m.sidebarMode m.winSize m.wallet m.acts m.assets m.sidebarInfLists
+            [ lazy7 Sidebar.viewSidebar m.sidebarMode m.winSize m.wallet m.acts m.assets m.sidebarInfLists m.taxInfo
             , lazy2 Canvas.viewSelectHighlight m.canvas m.selectCell
             , lazy2 Canvas.viewQueuedHighlights m.queue m.canvas
             , lazy7 Cell.viewSelectCell m.cellModalMode m.winSize m.canvas m.selectCell m.wallet m.taxInfo m.input

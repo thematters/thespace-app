@@ -1,8 +1,9 @@
 module Config exposing (..)
 
 import BigInt exposing (BigInt)
+import Config.Env.Util exposing (Contracts, RpcProvider)
 import Env exposing (env)
-import Eth.Types exposing (Address)
+import Eth.Types exposing (Address, Hex)
 import Eth.Utils exposing (addressToString, unsafeToHex)
 
 
@@ -131,22 +132,22 @@ canvaszIndex =
 
 pointingCellzIndex : Int
 pointingCellzIndex =
-    97
+    canvaszIndex + 1
 
 
 selectCellzIndex : Int
 selectCellzIndex =
-    98
+    pointingCellzIndex + 1
 
 
 queuedCellzIndex : Int
 queuedCellzIndex =
-    99
+    selectCellzIndex + 1
 
 
 sidebarzIndex : Int
 sidebarzIndex =
-    100
+    queuedCellzIndex + 1
 
 
 miniMapzIndex : Int
@@ -156,7 +157,7 @@ miniMapzIndex =
 
 cellModalzIndex : Int
 cellModalzIndex =
-    sidebarzIndex + 1
+    miniMapzIndex + 1
 
 
 notifzIndex : Int
@@ -264,30 +265,53 @@ getOwnPixelLimit =
 -- Topcis
 
 
+color : String
 color =
     "8da7074ffa2c919782faaf9705c7edfe7f814551a91b91aed83ee2ef5ac6af27"
 
 
+price : String
 price =
     "75a0543aefc16d03b25751bdf0b5a2fbbec05c6436fd60b038d40f5b7d1def83"
 
 
+transfer : String
 transfer =
     "c12a40285e912bef139dd458d6bb29f54ba3b7bb9513d442a8c16a3f0a649eed"
 
 
+tax : String
 tax =
     "c5790222911f43ca7d78c4f5ef5cb5a21d7fda4d923d433b80e7db9c295de88a"
 
 
+ubi : String
 ubi =
     "a760fe80056c46d089c37a35d9dbe762141a463ae0eb8235522d27ab9595286d"
 
 
+snapshot : String
 snapshot =
     "33038a04092464e1b8ce6006a75d1518a1226c32d269977e141f566ea7e284ab"
 
 
+registryTransfer : String
+registryTransfer =
+    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+
+
+type alias Topics =
+    { color : Hex
+    , price : Hex
+    , transfer : Hex
+    , tax : Hex
+    , ubi : Hex
+    , snapshot : Hex
+    , registryTransfer : Hex
+    }
+
+
+topics : Topics
 topics =
     { color = color |> unsafeToHex
     , price = price |> unsafeToHex
@@ -295,17 +319,21 @@ topics =
     , tax = tax |> unsafeToHex
     , ubi = ubi |> unsafeToHex
     , snapshot = snapshot |> unsafeToHex
+    , registryTransfer = registryTransfer |> unsafeToHex
     }
 
 
+rpcSocketAddress : String
 rpcSocketAddress =
     env.rpcSocketAddress
 
 
+rpcProvider : RpcProvider
 rpcProvider =
     env.rpcProvider
 
 
+contracts : Contracts
 contracts =
     env.contracts
 
