@@ -219,7 +219,7 @@ maxPrice256 =
 
 maxPrice : BigInt
 maxPrice =
-    -- 1 billion Eth
+    -- 1 billion Eth in Wei
     let
         b10 =
             BigInt.fromInt 10
@@ -227,7 +227,7 @@ maxPrice =
         bG =
             BigInt.fromInt 1000000000
     in
-    BigInt.mul bG bG |> BigInt.mul b10
+    BigInt.mul bG bG |> BigInt.mul bG |> BigInt.mul b10
 
 
 zeroPrice : BigInt
@@ -239,6 +239,11 @@ minPrice : BigInt
 minPrice =
     -- 0 Wei
     zeroPrice
+
+
+inputPriceDecimalDigits : Int
+inputPriceDecimalDigits =
+    2
 
 
 getOwnPixelPage : Int

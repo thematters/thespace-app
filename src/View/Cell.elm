@@ -8,6 +8,7 @@ import Config
         , cellModalzIndex
         , colorHexs
         , highlightZoom
+        , inputPriceDecimalDigits
         , lightColor
         , maxPrice
         , minPrice
@@ -42,7 +43,7 @@ import Data
         )
 import Data.Icon as Icons
 import Eth.Defaults exposing (zeroAddress)
-import Eth.Units exposing (EthUnit(..), bigIntToWei)
+import Eth.Units exposing (EthUnit(..), bigIntToWei, toWei)
 import Html.Styled exposing (Html, button, div, input, text)
 import Html.Styled.Attributes exposing (css, href, title, type_, value)
 import Html.Styled.Events exposing (onClick, onInput)
@@ -55,6 +56,7 @@ import Model
         , UserInput
         )
 import Msg exposing (Msg(..))
+import Round
 import View.Common
     exposing
         ( addressTag
@@ -804,22 +806,17 @@ priceInput newPrice =
                 ]
                 [ text tokenSign ]
 
-        validateInput s =
-            s
-                |> BigInt.fromIntString
-                |> Maybe.map (safePrice >> bigIntToWei Ether)
-                |> Maybe.withDefault (safeStringToWei s)
-
-        safeStringToWei s =
-            s
-                |> String.toFloat
-                |> Maybe.map
-                    (Basics.round
-                        >> BigInt.fromInt
-                        >> safePrice
-                        >> bigIntToWei Ether
-                    )
-                |> Maybe.withDefault minPrice
+        validateInput =
+            let
+                keepDecimalDigits =
+                    Round.round inputPriceDecimalDigits
+                        >> toWei Ether
+                        >> Result.map safePrice
+                        >> Result.withDefault minPrice
+            in
+            String.toFloat
+                >> Maybe.map keepDecimalDigits
+                >> Maybe.withDefault minPrice
 
         input_ =
             div
