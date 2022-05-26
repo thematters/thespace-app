@@ -40,19 +40,22 @@ npx live-server --watch=src/Native/ --port=4000 --open=public
 cp src/Env/(Production|Staging|Development).env src/Env.elm
 ```
 
-### Backup current ```src/Env.elm``` to ```src/Env.bak```
+### Backup current env
 
 ```
 make backupEnv
 ```
 
-### Restore ```src/Env.bak``` to ```src/Env.elm```
+This will back up ```src/Env.elm``` to ```src/Env.bak```.
+
+
+### Restore backup env
 
 ```
 make restoreEnv
 ```
 
-*Will use ```src/Env/Development.env``` if ```src/Env.bak``` not exists.*
+This will restore ```src/Env.bak``` to ```src/Env.elm```, and use ```src/Env/Development.env``` if ```src/Env.bak``` not exists.*
 
 
 ## Release
