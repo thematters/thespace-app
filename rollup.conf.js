@@ -3,7 +3,7 @@ import elm from 'rollup-plugin-elm'
 export default {
     input: 'src/Native/init.js',
     output: {
-        file: `public/app.js`,
+        file: `build/app.js`,
         format: 'iife'
     },
     plugins: [

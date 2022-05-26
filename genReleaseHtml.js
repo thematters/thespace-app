@@ -26,7 +26,7 @@ const template = `<!DOCTYPE html>
 </body>
 </html>`
 
-fs.writeFile('public/release.html', template, (err) => {
+fs.writeFile('build/release.html', template, (err) => {
     if (err) return console.log(err)
     console.log('>>> Writtten html to public/release.html')
 })
