@@ -9,3 +9,5 @@ package-lock.json
 
 # intermediary compiled Elm app
 src/Native/elmapp.js
+
+*~
