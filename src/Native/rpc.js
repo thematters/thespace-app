@@ -80,44 +80,8 @@ async function registerWallet(app) {
 
     const reqAcct = async () => { return _getOrReqAcct("eth_requestAccounts") }
 
-    // const gasStationUrl = (env) => {
-    //     switch (env) {
-    //         case "prod":
-    //             return "https://gasstation-mainnet.matic.network/v2"
-    //         case "stag":
-    //             return "https://gasstation-mumbai.matic.today/v2"
-    //     }
-    // }
-
-    // const getGasPrice = async (gs) => {
-    //     let maxFeePerGas = 40000000000 // fallback to 40 gwei
-    //     try {
-    //         const resp = await fetch(gs)
-    //         const data = await resp.json()
-    //         maxFeePerGas = 
-    //         Math.min(
-    //             Math.ceil(data.fast.maxPriorityFee) * 1000000000,
-    //             Number.MAX_SAFE_INTEGER
-    //         )
-    //     } catch {
-    //         // ignore
-    //     }
-    //     return "0x" + maxFeePerGas.toString(16)
-    // }
-
-    // const addGasPrice = async (msg) => {
-    //     let gs = gasStationUrl(env)
-    //     if (typeof gs === "undefined") {
-    //         return msg
-    //     } else {
-    //         msg.params[0].gasPrice = await getGasPrice(gs)
-    //         return msg
-    //     }
-    // }
-
     const sendTx = async (msg) => {
         msg.method = "eth_sendTransaction"
-        // return await ethereum.request(await addGasPrice(msg))
         return await ethereum.request(msg)
     }
 
