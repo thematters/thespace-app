@@ -1,10 +1,12 @@
 name: Deployment
 
 on:
-  push:
+  pull_request:
     branches:
-    - main
-    - develop
+      - master
+      - develop
+      - stage
+    types: [closed]
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
