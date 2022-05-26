@@ -55,7 +55,7 @@ This will back up ```src/Env.elm``` to ```src/Env.bak```.
 make restoreEnv
 ```
 
-This will restore ```src/Env.bak``` to ```src/Env.elm```, and use ```src/Env/Development.env``` if ```src/Env.bak``` not exists.*
+This will restore ```src/Env.bak``` to ```src/Env.elm```, and use ```src/Env/Development.env``` if ```src/Env.bak``` not exists.
 
 
 ## Release
