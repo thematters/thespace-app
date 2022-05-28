@@ -11,17 +11,17 @@ erc20 =
 
 space : String
 space =
-    "0xc956a1da0be768eac0d59be19d6762ec094f1566"
+    "0x06110bddbddf24bdb89c56c8ef4bfb092cd52cdb"
 
 
 registry : String
 registry =
-    "0x1ff7500668f88ac71b108e2ad1dfa5bf44d617cb"
+    "0xaf1dfe31de25216501fc65719997a7163f8b7ee4"
 
 
 snapper : String
 snapper =
-    "0x12103bb80c09d9dd66a771cc7b94808ab110e77c"
+    "0x22b2a05fabe0cd6b728465ff4cae219149ef1818"
 
 
 env : Env
