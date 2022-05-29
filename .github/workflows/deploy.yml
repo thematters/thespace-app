@@ -40,6 +40,6 @@ jobs:
           folder: build
           bucket: app.thespace.game
           bucket-region: ap-southeast-1
-          dist-id: TBD
+          dist-id: E29ZFXXINKSOH
           invalidation: /
           delete-removed: true
