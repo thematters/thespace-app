@@ -14,7 +14,7 @@ viewSponsor =
         heart =
             iconLight heartSmall
 
-        madeBy =
+        poweredBy =
             textDiv "Powered by"
 
         mattersLab =
@@ -35,4 +35,4 @@ viewSponsor =
             , property "pointer-events" "none"
             ]
         ]
-        [ heart, madeBy, mattersLab ]
+        [ heart, poweredBy, mattersLab ]
