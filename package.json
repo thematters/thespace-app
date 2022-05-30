@@ -10,7 +10,9 @@
     "rollup-plugin-elm": "^3.0.0",
     "uglify-js": "^3.14.5"
   },
-  "scripts": {},
+  "scripts": {
+    "build": "node genReleaseHtml.js build/app.min.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/thematters/thespace-app/"
