@@ -47,9 +47,8 @@ jobs:
         with:
           folder: build
           bucket: app-testnets.thespace.game
-          bucket-region: ap-southeast-1
           dist-id: EVWV6S8G4YU1I
-          invalidation: /
+          invalidation: /*
           private: true
           delete-removed: true
 
@@ -59,8 +58,7 @@ jobs:
         with:
           folder: build
           bucket: app.thespace.game
-          bucket-region: ap-southeast-1
           dist-id: E29ZFXXINKSOH
-          invalidation: /
+          invalidation: /*
           private: true
           delete-removed: true
