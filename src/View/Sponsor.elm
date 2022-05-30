@@ -15,7 +15,7 @@ viewSponsor =
             iconLight heartSmall
 
         madeBy =
-            textDiv "Made by"
+            textDiv "Powered by"
 
         mattersLab =
             div [ css [ fontWeight bold ] ] [ text "Matters Lab" ]
