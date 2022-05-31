@@ -368,12 +368,12 @@ installMetaMaskLink =
 
 getTokenLink : String
 getTokenLink =
-    "https://forms.gle/NLmwXdta156JPnfq5"
+    "https://app.uniswap.org/#/swap?chain=polygon&outputCurrency=0x264808855b0a6a5a318d238c6ee9f299179f27fc"
 
 
 whatAreTheseNumbersLink : String
 whatAreTheseNumbersLink =
-    "https://wiki.thespace.game/introduction-to-the-space#0807e8a7cf96446ebfd91ed7eef29805"
+    "https://wiki.thespace.game/the-space-play-guide#bc7e22637f76471795b7d450dc1eb612"
 
 
 underPricedHelpLink : String
