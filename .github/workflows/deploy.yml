@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - develop
-      - stage
     types: [closed]
 
 env:
@@ -22,22 +21,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Build (Develop)
-        if: github.base_ref == 'develop'
-        run: npm run build
-
-      - name: Build (Production)
-        if: github.base_ref == 'main'
-        run: npm run build
-        env:
-          NEXT_PUBLIC_RUNTIME_ENV: 'production'
-          NEXT_PUBLIC_GOOGLE_ANALYTICS: 'G-1E9WY5EQX9'
-
-      - name: Deploy (Develop)
+      - name: Deploy (Staging)
         if: github.base_ref == 'develop'
         uses: reggionick/s3-deploy@v3
         with:
-          folder: build
+          folder: current/stag
           bucket: app-testnets.thespace.game
           bucket-region: ap-southeast-1
           dist-id: EVWV6S8G4YU1I
@@ -49,7 +37,7 @@ jobs:
         if: github.base_ref == 'main'
         uses: reggionick/s3-deploy@v3
         with:
-          folder: build
+          folder: current/prod
           bucket: app.thespace.game
           bucket-region: ap-southeast-1
           dist-id: E29ZFXXINKSOH

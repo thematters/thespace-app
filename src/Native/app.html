@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>TheSpace</title>
+    <head><style>body { margin: 0; overflow: hidden; }</style></head>
+<body>
+    <main></main>
+    <script src="/src/Native/elmapp.js"></script>
+    <script type="module">
+        import { registerRender } from "/src/Native/canvas.js"
+        import { registerRpc } from "/src/Native/rpc.js"
+        import { initApp } from "/src/Native/init.js"
+        initApp(Elm, registerRender, registerRpc, "#canvas", "#minimap")
+    </script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 backupEnv :
 	cp src/Env.elm src/Env.bak
 
+
 restoreEnv :
 ifneq (,$(wildcard src/Env.bak))
 	mv src/Env.bak src/Env.elm
@@ -10,15 +11,39 @@ else
 endif
 
 
-release :
-	make backupEnv
+_prod :
 	cp src/Env/Production.env src/Env.elm
-	npx rollup --config rollup.conf.js
-	npx uglifyjs build/app.js --compress \
-	"pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe" | \
-	npx uglifyjs --mangle --output build/app.min.js
-	sha1sum build/app.min.js
-	npm run build
+	npx elm-esm make src/Main.elm --output=src/Native/elmappesm.js --optimize
+	npx rollup src/Native/main.js --format=iife --file=current/prod/app.js
+	rm src/Native/elmappesm.js
+	npx uglifyjs current/prod/app.js --compress \
+		"pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe" | \
+	npx uglifyjs --mangle --output current/prod/app.min.js
+	node genHtml.js current/prod/app.min.js
+	rm current/prod/app.js
 
-clean:
-	rm build/app.js
+
+_stag :
+	cp src/Env/Staging.env src/Env.elm
+	npx elm-esm make src/Main.elm --output=src/Native/elmappesm.js --optimize
+	npx rollup src/Native/main.js --format=iife --file=current/stag/app.js
+	rm src/Native/elmappesm.js
+	npx uglifyjs current/stag/app.js --compress \
+		"pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe" | \
+	npx uglifyjs --mangle --output current/stag/app.min.js
+	node genHtml.js current/stag/app.min.js
+	rm current/stag/app.js
+
+
+prod :
+	-mkdir -p current/prod
+	make backupEnv
+	-make _prod
+	make restoreEnv
+
+
+stag :
+	-mkdir -p current/stag
+	make backupEnv
+	-make _stag
+	make restoreEnv
