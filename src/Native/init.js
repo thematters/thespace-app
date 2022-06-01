@@ -22,19 +22,14 @@ const initCenterCell = () => {
 
 const waitElement = (selector) => {
     return new Promise(resolve => {
-        if (document.querySelector(selector)) {
+        if (document.querySelector(selector))
             return resolve(document.querySelector(selector))
-        }
-        observer.observe(
-            document.body, { childList: true, subtree: true }
-        )
+        observer.observe(document.body, { childList: true, subtree: true })
     })
 }
 
 
-export function initApp(
-    elmModule, renderRegFunc, rpcRegFunc, canvasId, mmmapId
-) {
+export function initApp(elmModule, renderRegFunc, rpcRegFunc, canvasId, mmapId) {
     const app = elmModule.Main.init({
         node: document.querySelector("main"),
         flags: {
@@ -45,14 +40,13 @@ export function initApp(
             zoom: param("z") >> 0
         }
     })
-    // register canvas render and rpc ports
     // this will be cleaner using async/await, but uglify-js doesn't agree,
     // seems some babel stuff can fix it, but just seems not worth it...
     waitElement(canvasId).then(
         cvs => {
-            waitElement(mmmapId).then(
-                mmmap => {
-                    renderRegFunc(app, cvs, mmmap)
+            waitElement(mmapId).then(
+                mmap => {
+                    renderRegFunc(app, cvs, mmap)
                     rpcRegFunc(app)
                     observer.disconnect()
                 }
