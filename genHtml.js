@@ -8,15 +8,15 @@ const stagjs = "current/stag/app.min.js"
 
 const js = process.argv[2]
 
-if ( js !== prodjs && js !== stagjs) {
-    console.log("[Error] Unrecognized env of input js:", js)
+if (js !== prodjs && js !== stagjs) {
+    console.log("[Error] Unrecognized env:", js)
     process.exit(1)
 }
 
 const env = js === prodjs ? "prod" : "stag"
 
-const text = fs.readFileSync(process.argv[2])
-const md5sum = crypto.createHash("md5").update(text).digest("hex")
+const jstext = fs.readFileSync(js)
+const md5sum = crypto.createHash("md5").update(jstext).digest("hex")
 
 const title = "TheSpace App | World’s First NFT Pixel Art Game in Radical Markets"
 const description = "The Space is the first NFT pixel art game where players own, color, and trade pixels as ERC721 tokens under Harberger Tax and earn a Universal Basic Income."
