@@ -8,8 +8,6 @@ const stagjs = "current/stag/app.min.js"
 
 const js = process.argv[2]
 
-console.log("js", js)
-
 if ( js !== prodjs && js !== stagjs) {
     console.log("[Error] Unrecognized env of input js:", js)
     process.exit(1)
