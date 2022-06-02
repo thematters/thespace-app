@@ -6,22 +6,22 @@ import Config.Network.Mainnet as Net
 
 erc20 : String
 erc20 =
-    "0x41d4c1973d3f582439701bdfdd3d2c99130acab0"
+    "0x264808855b0a6a5a318d238c6ee9f299179f27fc"
 
 
 space : String
 space =
-    "0x4ba11d0758f5feb7705ce9b38b00b61c7ab8667e"
+    "0x9b71045ac2a1563dc5ff8e0c537413a6aae16cd1"
 
 
 registry : String
 registry =
-    "0xaf1dfe31de25216501fc65719997a7163f8b7ee4"
+    "0x8da7a7a48ebbd870358f2fd824e52e5142f44257"
 
 
 snapper : String
 snapper =
-    "0x22b2a05fabe0cd6b728465ff4cae219149ef1818"
+    "0x1363c844f9344c153f14671b12de40689c72533a"
 
 
 env : Env
@@ -34,7 +34,7 @@ env =
     , rpcSocketAddress = Net.rpcSocketAddress
     , rpcProvider = Net.rpcProvider
     , polyscanEndpoint = "https://polygonscan.com/"
-    , snapshotUriPrefix = "https://d23t3m1s3moj89.cloudfront.net/"
+    , snapshotUriPrefix = "https://d3ogaonsclhjen.cloudfront.net/"
     , debug = False
 
     --, debug = True
