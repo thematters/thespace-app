@@ -11,7 +11,7 @@ erc20 =
 
 space : String
 space =
-    "0xa84108b2d248e0991b5c214db29ceab989f0bea1"
+    "0x9b71045ac2a1563dc5ff8e0c537413a6aae16cd1"
 
 
 registry : String
