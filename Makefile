@@ -1,6 +1,15 @@
+devServer :
+  npx elm-live src/Main.elm \
+  --host=127.0.0.1 --start-page=src/Native/app.html --open -- \
+  --output=src/Native/elmapp.js --optimized
+
+debugServer :
+  npx elm-live src/Main.elm \
+  --host=127.0.0.1 --start-page=src/Native/app.html --open -- \
+  --output=src/Native/elmapp.js --debug
+
 backupEnv :
 	cp src/Env.elm src/Env.bak
-
 
 restoreEnv :
 ifneq (,$(wildcard src/Env.bak))
@@ -9,7 +18,6 @@ else
 	$(info >>> src/Env.bak not found, using src/Env/Development.env)
 	cp src/Env/Development.env src/Env.elm
 endif
-
 
 _prod :
 	cp src/Env/Production.env src/Env.elm
@@ -22,7 +30,6 @@ _prod :
 	node genHtml.js current/prod/app.min.js
 	rm current/prod/app.js
 
-
 _stag :
 	cp src/Env/Staging.env src/Env.elm
 	npx elm-esm make src/Main.elm --output=src/Native/elmappesm.js --optimize
@@ -34,13 +41,11 @@ _stag :
 	node genHtml.js current/stag/app.min.js
 	rm current/stag/app.js
 
-
 prod :
 	-mkdir -p current/prod
 	make backupEnv
 	-make _prod
 	make restoreEnv
-
 
 stag :
 	-mkdir -p current/stag

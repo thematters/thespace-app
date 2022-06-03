@@ -6,7 +6,6 @@ Source code of [TheSpace](https://thespace.game) official app.
 
 - Elm v0.19 https://guide.elm-lang.org/install/
 - Node/NPM (recent version) https://docs.npmjs.com/cli/v8/configuring-npm/install
-- make
 
 ### Install project development dependencies
 
@@ -17,10 +16,18 @@ npm install --only-dev
 ### Auto reload dev server
 
 ```
-npx elm-live src/Main.elm --host=127.0.0.1 --start-page=src/Native/app.html --open  -- --output=src/Native/elmapp.js
+make devServer
 ```
 
-*Note: ```src/Native/elmapp.js``` is in .gitignore, host using ```127.0.0.1``` instead of ```localhost``` due to rpc provider whitelist.*
+or, in debug mode
+
+```
+make debugServer
+```
+
+#### Notes
+- tmp build elmapp to ```src/Native/elmapp.js``` (in .gitignore).
+- host using ```127.0.0.1:4000``` (not ```localhost``` due to rpc provider whitelisting).
 
 ### Env Management (production/staging/development)
 
@@ -63,6 +70,7 @@ make stag
 ```
 
 These commands will:
+
 1. backup current env
 2. switch to production/staging env
 3. compile current Elm code with ```--optimize``` flag to ```src/Native/elmappesm.js```
