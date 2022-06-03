@@ -1,17 +1,17 @@
-devServer :
+dev-server :
   npx elm-live src/Main.elm \
   --host=127.0.0.1 --start-page=src/Native/app.html --open -- \
   --output=src/Native/elmapp.js --optimized
 
-debugServer :
+debug-server :
   npx elm-live src/Main.elm \
   --host=127.0.0.1 --start-page=src/Native/app.html --open -- \
   --output=src/Native/elmapp.js --debug
 
-backupEnv :
+backup-env :
 	cp src/Env.elm src/Env.bak
 
-restoreEnv :
+restore-env :
 ifneq (,$(wildcard src/Env.bak))
 	mv src/Env.bak src/Env.elm
 else
@@ -43,12 +43,12 @@ _stag :
 
 prod :
 	-mkdir -p current/prod
-	make backupEnv
+	make backup-env
 	-make _prod
-	make restoreEnv
+	make restore-env
 
 stag :
 	-mkdir -p current/stag
-	make backupEnv
+	make backup-env
 	-make _stag
-	make restoreEnv
+	make restore-env

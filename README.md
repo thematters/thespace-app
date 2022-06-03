@@ -16,13 +16,13 @@ npm install --only-dev
 ### Auto reload dev server
 
 ```
-make devServer
+make dev-server
 ```
 
 or, in debug mode
 
 ```
-make debugServer
+make debug-server
 ```
 
 #### Notes
@@ -40,7 +40,7 @@ cp src/Env/(Production|Staging|Development).env src/Env.elm
 ### Backup current env
 
 ```
-make backupEnv
+make backup-env
 ```
 
 This will back up ```src/Env.elm``` to ```src/Env.bak```.
@@ -49,7 +49,7 @@ This will back up ```src/Env.elm``` to ```src/Env.bak```.
 ### Restore backup env
 
 ```
-make restoreEnv
+make restore-env
 ```
 
 This will restore ```src/Env.bak``` to ```src/Env.elm```, and use ```src/Env/Development.env``` if ```src/Env.bak``` not exists.
