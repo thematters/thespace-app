@@ -1,0 +1,4 @@
+exclude:
+  - develop
+  - master
+  - stage
