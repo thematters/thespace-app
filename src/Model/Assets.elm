@@ -267,20 +267,28 @@ updateAssetsByTransfer address transfer ({ changes, total } as assets) =
 
 
 updateAssetsByColor : ColorEvent -> LoadedAssetsData -> LoadedAssetsData
-updateAssetsByColor { index } ({ changes } as assets) =
+updateAssetsByColor { index } ({ changes, loadedIds } as assets) =
     case changes |> Dict.get index of
         Nothing ->
-            { assets | changes = changes |> Dict.insert index Updated }
+            if loadedIds |> Set.member index then
+                { assets | changes = changes |> Dict.insert index Updated }
+
+            else
+                assets
 
         _ ->
             assets
 
 
 updateAssetsByPrice : PriceEvent -> LoadedAssetsData -> LoadedAssetsData
-updateAssetsByPrice { index } ({ changes } as assets) =
+updateAssetsByPrice { index } ({ changes, loadedIds } as assets) =
     case changes |> Dict.get index of
         Nothing ->
-            { assets | changes = changes |> Dict.insert index Updated }
+            if loadedIds |> Set.member index then
+                { assets | changes = changes |> Dict.insert index Updated }
+
+            else
+                assets
 
         _ ->
             assets
