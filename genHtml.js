@@ -21,7 +21,7 @@ const keywords = "universal basic income,r/place,graffiti wall,pixel nft,nft pix
 const imgUrl = "https://thespace.game/img/thumb.jpg?v=1"
 const host = isProd ? "app.thespace.game" : "app-testnets.thespace.game"
 const robot = isProd ? "" : `
-<meta name="robots" content="noindex, nofollow"/><meta name="googlebot" content="noindex, nofollow"/>`
+    <meta name="robots" content="noindex, nofollow"/><meta name="googlebot" content="noindex, nofollow"/>`
 const seo = isProd ? `
     <meta name="description" content="${desc}"/>
     <meta name="keywords" content="${keywords}"/>
@@ -34,7 +34,7 @@ const seo = isProd ? `
     <meta name="twitter:image" content="${imgUrl}"/>
     <meta name="twitter:image:alt" content="${desc}"/>
     <meta name="twitter:site" content="@TheSpace2022"/>
-    <meta name="twitter:creator" content="@Mattersw3b"/>${robot}` : ""
+    <meta name="twitter:creator" content="@Mattersw3b"/>` : ""
 const md5sum = crypto.createHash("md5").update(fs.readFileSync(js)).digest("hex")
 const ga = isProd ? "G-Z5GX99N9XF" : "G-BDVY2DY2QW"
 
@@ -44,7 +44,7 @@ const html = `<!DOCTYPE html>
     <meta charset="UTF-8">
     <title>${title}</title>
     <link rel="shortcut icon" href="/favicon.svg" type="image/x-icon" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">${seo}
+    <meta name="viewport" content="width=device-width, initial-scale=1">${seo}${robot}
     <style>body{margin:0;overflow:hidden;}</style>
 </head>
 <body>
