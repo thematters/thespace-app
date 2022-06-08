@@ -248,17 +248,7 @@ type Notification
     | LoadingNotif
 
 
-initPlaybackConfig from to =
-    { from = from
-    , to = to
-    , shareFrom = from
-    , shareTo = to
-    , speed = OneX
-    , current = 0
-    , status = PlaybackPaused
-    }
-
-
+initWatchIds : WatchIds
 initWatchIds =
     { newHeads = Nothing
     , color = Nothing
@@ -270,6 +260,19 @@ initWatchIds =
     }
 
 
+initPlaybackConfig : BlockNumber -> BlockNumber -> PlaybackConfig
+initPlaybackConfig from to =
+    { from = from
+    , to = to
+    , shareFrom = from
+    , shareTo = to
+    , speed = OneX
+    , current = 0
+    , status = PlaybackPaused
+    }
+
+
+playbackSpeedToString : PlaybackSpeed -> String
 playbackSpeedToString spd =
     case spd of
         OneX ->
@@ -282,6 +285,7 @@ playbackSpeedToString spd =
             "4X"
 
 
+nextPlaybackSpeed : PlaybackSpeed -> PlaybackSpeed
 nextPlaybackSpeed spd =
     case spd of
         OneX ->

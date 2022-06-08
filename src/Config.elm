@@ -343,6 +343,7 @@ contracts =
     env.contracts
 
 
+debug : Bool
 debug =
     env.debug
 
