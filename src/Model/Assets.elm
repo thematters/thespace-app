@@ -266,32 +266,27 @@ updateAssetsByTransfer address transfer ({ changes, total } as assets) =
         assets
 
 
+loadedBuNotChanged : Index -> AssetsChanges -> AssetsLoadedIds -> Bool
+loadedBuNotChanged idx cs ids =
+    Set.member idx ids && (not <| Dict.member idx cs)
+
+
 updateAssetsByColor : ColorEvent -> LoadedAssetsData -> LoadedAssetsData
 updateAssetsByColor { index } ({ changes, loadedIds } as assets) =
-    case changes |> Dict.get index of
-        Nothing ->
-            if loadedIds |> Set.member index then
-                { assets | changes = changes |> Dict.insert index Updated }
+    if loadedBuNotChanged index changes loadedIds then
+        { assets | changes = changes |> Dict.insert index Updated }
 
-            else
-                assets
-
-        _ ->
-            assets
+    else
+        assets
 
 
 updateAssetsByPrice : PriceEvent -> LoadedAssetsData -> LoadedAssetsData
 updateAssetsByPrice { index } ({ changes, loadedIds } as assets) =
-    case changes |> Dict.get index of
-        Nothing ->
-            if loadedIds |> Set.member index then
-                { assets | changes = changes |> Dict.insert index Updated }
+    if loadedBuNotChanged index changes loadedIds then
+        { assets | changes = changes |> Dict.insert index Updated }
 
-            else
-                assets
-
-        _ ->
-            assets
+    else
+        assets
 
 
 updateAssetsByUbi : UbiEvent -> LoadedAssetsData -> LoadedAssetsData
