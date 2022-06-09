@@ -4,6 +4,11 @@ import Config.Env.Util exposing (Env, toContracts)
 import Config.Network.Ganache as Net
 
 
+rpcSocketAddress : String
+rpcSocketAddress =
+    "ws://127.0.0.1:8545"
+
+
 erc20 : String
 erc20 =
     "0xeb6814043dc2184b0b321f6de995bf11bdbcc5b8"
@@ -21,8 +26,7 @@ registry =
 
 snapper : String
 snapper =
-    --"0xaad1d62d70995d8781ec78be717d7b48aa76fc1b"
-    "0xd73c7b3f7852e1bdf00d5df642a6e72f1caf672f"
+    "0xaad1d62d70995d8781ec78be717d7b48aa76fc1b"
 
 
 env : Env
@@ -32,7 +36,7 @@ env =
     , mapHeight = 1000
     , minZoom = 2
     , contracts = toContracts erc20 space registry snapper
-    , rpcSocketAddress = Net.rpcSocketAddress
+    , rpcSocketAddress = rpcSocketAddress
     , rpcProvider = Net.rpcProvider
     , polyscanEndpoint = "https://mumbai.polygonscan.com/"
     , snapshotUriPrefix = "https://d35rfwwq3facyl.cloudfront.net/"

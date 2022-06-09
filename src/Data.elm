@@ -58,8 +58,8 @@ type alias Position =
     { x : Float, y : Float }
 
 
-type alias PositionWithDelta =
-    { x : Float, y : Float, dx : Delta, dy : Delta }
+type alias PositionDelta =
+    { dx : Delta, dy : Delta }
 
 
 type alias Size =
@@ -336,9 +336,9 @@ position x y =
     { x = x, y = y }
 
 
-positionWithDelta : Float -> Float -> Delta -> Delta -> PositionWithDelta
-positionWithDelta x y dx dy =
-    { x = x, y = y, dx = dx, dy = dy }
+positionDelta : Position -> Position -> PositionDelta
+positionDelta p1 p2 =
+    { dx = p1.x - p2.x, dy = p1.y - p2.y }
 
 
 posToCell : Transform -> Position -> Cell
