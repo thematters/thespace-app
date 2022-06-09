@@ -27,7 +27,7 @@ make debug-server
 
 #### Notes
 - tmp build elmapp to ```src/Native/elmapp.js``` (in .gitignore).
-- host using ```127.0.0.1:4000``` (not ```localhost``` due to rpc provider whitelisting).
+- host using ```127.0.0.1:8000``` (not ```localhost``` due to rpc provider whitelisting).
 
 ### Env Management (production/staging/development)
 
