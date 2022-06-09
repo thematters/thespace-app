@@ -10,7 +10,7 @@ import Dict
 import Eth.Types exposing (Address)
 import Html.Styled exposing (Html, toUnstyled)
 import InfiniteList
-import Json.Decode as D
+import Json.Decode as D exposing (Decoder)
 import Json.Encode exposing (Value)
 import Model exposing (..)
 import Model.Assets
@@ -28,6 +28,12 @@ import Model.Assets
         , updateAssetsByTransfer
         , updateAssetsByUbi
         , withinGetOwnPixelLimit
+        )
+import Model.Playback
+    exposing
+        ( PlaybackConfig
+        , PlaybackStatus(..)
+        , nextPlaybackSpeed
         )
 import Msg exposing (Msg(..))
 import Rpc
