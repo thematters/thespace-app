@@ -44,7 +44,7 @@ const html = `<!DOCTYPE html>
     <meta charset="UTF-8">
     <title>${title}</title>
     <link rel="shortcut icon" href="/favicon.svg" type="image/x-icon" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">${seo}${robot}
+    <meta name="viewport" content="width=device-width, initial-scale=0.7">${seo}${robot}
     <style>body{margin:0;overflow:hidden;}</style>
 </head>
 <body>
