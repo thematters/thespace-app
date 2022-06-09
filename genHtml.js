@@ -18,8 +18,8 @@ const isProd = js === prodJs ? true : false
 const title = "The Space: World’s First NFT Pixel Art Game Governed by Radical Markets"
 const desc = "The Space is the first NFT pixel art game where players own, color, and trade pixels as ERC721 tokens under Harberger Tax and earn a Universal Basic Income."
 const keywords = "universal basic income,r/place,graffiti wall,pixel nft,nft pixel art,reddit place,pixel art nft,radical markets,fractional nft,pixel map,harberger tax,dynamic nft,reddit pixel canvas,nft pixel art grid,nft fractionalization,nft fractional ownership,fractionalized nft,online graffiti wall,fractionalized ownership nft,collaborative nft,TheSpace,SpaceDAO,pixels"
-const imgUrl = "https://thespace.game/img/thumb.jpg?v=1"
-const host = isProd ? "app.thespace.game" : "app-testnets.thespace.game"
+const imgUrl = "/shareThumb.jpg?v=1"
+const host = isProd ? "app.thespace.game" : "moon.thespace.game"
 const robot = isProd ? "" : `
     <meta name="robots" content="noindex, nofollow"/><meta name="googlebot" content="noindex, nofollow"/>`
 const seo = isProd ? `
