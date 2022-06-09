@@ -7,6 +7,7 @@ import Data
     exposing
         ( ColorHex
         , Index
+        , Position
         , Price
         , addressAbbr
         , cellString
@@ -21,6 +22,8 @@ import Data.Icon as Icons
 import Eth.Types exposing (Address)
 import Eth.Units exposing (EthUnit(..))
 import Eth.Utils exposing (addressToString)
+import Html.Events.Extra.Mouse as Mouse
+import Html.Events.Extra.Wheel as Wheel
 import Html.Styled exposing (Html, button, div, fromUnstyled, text)
 import Html.Styled.Attributes exposing (css, href, title)
 import Html.Styled.Events exposing (onClick)
@@ -344,6 +347,7 @@ buttonDisabledStyle =
         ++ buttonBasicStyle
 
 
+icon_ : Color -> Html msg -> Html msg
 icon_ c i =
     div [ css [ displayFlex, color c ] ] [ i ]
 
@@ -518,31 +522,32 @@ coords colorDiv prefix idx =
         ]
 
 
+installButtonInfo : String
 installButtonInfo =
     "To buy pixel, your need to install MetaMask wallet."
 
 
+getTokenButtonInfo : String
 getTokenButtonInfo =
     "Your don't have any " ++ tokenSign ++ ", here is how to get some."
 
 
+switchButtonInfo : String
 switchButtonInfo =
     "To buy pixel, you need to switch your wallet to Polygon. "
 
 
+connectMetaMaskInfo : String
 connectMetaMaskInfo =
     "To buy pixel, you need to connect your wallet first."
 
 
+depositButtonInfo : String
 depositButtonInfo =
     "To buy pixel, you need to approve your " ++ tokenSign ++ "."
 
 
-tryAnywayInfo =
-    """If current owner can't clear tax, pixel will be defaulted, 
-and you can get it at a minimum initial price."""
-
-
+syncPriceInfo : String
 syncPriceInfo =
     "Price changed after you opened the window, click here to sync."
 
@@ -690,6 +695,7 @@ syncPriceLink =
 -- Event Handlers
 
 
+mouseDownHandler_ : (Position -> Msg) -> Mouse.Event -> Msg
 mouseDownHandler_ msg evt =
     let
         ( x, y ) =
@@ -698,14 +704,17 @@ mouseDownHandler_ msg evt =
     msg { x = x, y = y }
 
 
+mapMouseDownHandler : Mouse.Event -> Msg
 mapMouseDownHandler =
     mouseDownHandler_ MapMouseDown
 
 
+miniMapMouseDownHandler : Mouse.Event -> Msg
 miniMapMouseDownHandler =
     mouseDownHandler_ MiniMapMouseDown
 
 
+mouseWheelHandler : Wheel.Event -> Msg
 mouseWheelHandler evt =
     if evt.deltaY > 0 then
         ZoomOut

@@ -1,17 +1,13 @@
 {
-  "name": "thespace",
+  "name": "thespace-app",
   "version": "1.0.0",
-  "description": "The Space client repo",
+  "description": "TheSpace official app",
   "main": "",
   "devDependencies": {
-    "elm-live": "^4.0.2",
-    "live-server": "^1.2.1",
+    "elm-esm": "^1.1.4",
+    "elm-live": "^4.0.0-rc.1",
     "rollup": "^2.62.0",
-    "rollup-plugin-elm": "^3.0.0",
     "uglify-js": "^3.14.5"
-  },
-  "scripts": {
-    "build": "node genReleaseHtml.js build/app.min.js"
   },
   "repository": {
     "type": "git",

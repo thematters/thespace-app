@@ -585,6 +585,7 @@ accUbi oldUbi mapSize newTaxAmount =
     shares |> BigInt.div shareAmount |> BigInt.add oldUbi
 
 
+abbrString : Int -> String -> String
 abbrString len s =
     if String.length s <= len then
         s
@@ -759,10 +760,12 @@ notOnChain chainId =
     chainId /= rpcProvider.chainId
 
 
+defaultRpcErrorCode : Int
 defaultRpcErrorCode =
     -33000
 
 
+defaultRpcErrorData : String -> RpcErrorData
 defaultRpcErrorData msg =
     { kind = RpcUnknownError -- we may special treat some errors
     , code = defaultRpcErrorCode
@@ -770,6 +773,7 @@ defaultRpcErrorData msg =
     }
 
 
+defaultRpcError : String -> RpcResult
 defaultRpcError msg =
     RpcError <| defaultRpcErrorData msg
 

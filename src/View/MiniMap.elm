@@ -15,6 +15,7 @@ import Data
         ( Cell
         , Size
         , Transform
+        , ZoomLevel
         , cellInMap
         , cellString
         , sizeToFloatSize
@@ -285,11 +286,13 @@ viewport winSize canvas =
     highlight x y w h lineWidth color zIndex
 
 
+basicOps : MiniMapMode -> ZoomLevel -> Html Msg
 basicOps mode zoom =
     div [ css [ displayFlex, alignItems center, property "gap" "20px" ] ]
         [ switchMode mode, zoomIn zoom, zoomOut zoom ]
 
 
+switchMode : MiniMapMode -> Html Msg
 switchMode mode =
     let
         style_ =
@@ -306,14 +309,17 @@ switchMode mode =
     div [ css style_, onClick <| MiniMapModeChange to ] [ iconNormal icon ]
 
 
+zoomIn : ZoomLevel -> Html Msg
 zoomIn =
     zoom_ maxZoom Icons.zoomIn ZoomInCenter
 
 
+zoomOut : ZoomLevel -> Html Msg
 zoomOut =
     zoom_ minZoom Icons.zoomOut ZoomOutCenter
 
 
+zoom_ : ZoomLevel -> Html msg -> msg -> ZoomLevel -> Html msg
 zoom_ limit icon evt zoom =
     if zoom == limit then
         div [] [ iconLight icon ]
@@ -322,6 +328,7 @@ zoom_ limit icon evt zoom =
         div [ css [ cursor pointer ], onClick evt ] [ iconNormal icon ]
 
 
+reset : MiniMapMode -> Html Msg
 reset mode =
     let
         baseStyle =
