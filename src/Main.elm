@@ -354,11 +354,8 @@ update msg model =
                     else
                         handleDraggingEnd model
 
-        MouseMove dpos ->
+        MouseMove xy ->
             let
-                xy =
-                    { x = dpos.x, y = dpos.y }
-
                 m =
                     { model
                         | pagePos = xy
@@ -370,10 +367,10 @@ update msg model =
                     ( m, Cmd.none )
 
                 MapDragging _ ->
-                    handleMapDragging m dpos
+                    handleMapDragging m <| positionDelta xy model.pagePos
 
                 MiniMapDragging _ ->
-                    handleMiniMapDragging m dpos
+                    handleMiniMapDragging m <| positionDelta xy model.pagePos
 
         -- Cell Ops
         SwitchTaxUbiMode mode ->
@@ -901,20 +898,20 @@ handleSelectCell model cell =
     )
 
 
-handleMapDragging : Model -> PositionWithDelta -> ( Model, Cmd msg )
-handleMapDragging model dpos =
+handleMapDragging : Model -> PositionDelta -> ( Model, Cmd msg )
+handleMapDragging model { dx, dy } =
     let
         m =
             model |> removeSelectCell
 
         canvas =
-            m.canvas |> C.moveTransfrom dpos.dx dpos.dy m.winSize
+            m.canvas |> C.moveTransfrom dx dy m.winSize
     in
     ( { m | canvas = canvas }, C.move canvas )
 
 
-handleMiniMapDragging : Model -> PositionWithDelta -> ( Model, Cmd msg )
-handleMiniMapDragging m dpos =
+handleMiniMapDragging : Model -> PositionDelta -> ( Model, Cmd msg )
+handleMiniMapDragging m { dx, dy } =
     let
         ( mW, mH ) =
             mapSize |> sizeToFloatSize
@@ -923,17 +920,17 @@ handleMiniMapDragging m dpos =
             m.canvas
 
         dx_ =
-            -dpos.dx |> scale miniMapWidth (mW * cvs.zoom)
+            -dx |> scale miniMapWidth (mW * cvs.zoom)
 
         dy_ =
-            -dpos.dy |> scale miniMapHeight (mH * cvs.zoom)
+            -dy |> scale miniMapHeight (mH * cvs.zoom)
 
-        ( dx, dy ) =
+        ( mmdx, mmdy ) =
             ( cvs.dx + dx_, cvs.dy + dy_ )
                 |> C.moveClampToEdge cvs.zoom m.winSize
 
         canvas =
-            { cvs | dx = dx, dy = dy, zoom = cvs.zoom }
+            { cvs | dx = mmdx, dy = mmdy, zoom = cvs.zoom }
     in
     ( { m | canvas = canvas }, C.move canvas )
 
@@ -1870,12 +1867,10 @@ subscriptions model =
 browserSubs : List (Sub Msg)
 browserSubs =
     [ E.onMouseMove
-        (D.map4
-            (\x y dx dy -> MouseMove <| positionWithDelta x y dx dy)
+        (D.map2
+            (\x y -> MouseMove <| position x y)
             (D.field "pageX" D.float)
             (D.field "pageY" D.float)
-            (D.field "movementX" D.float)
-            (D.field "movementY" D.float)
         )
     , E.onMouseUp
         (D.map2

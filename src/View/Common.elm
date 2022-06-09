@@ -23,6 +23,7 @@ import Eth.Types exposing (Address)
 import Eth.Units exposing (EthUnit(..))
 import Eth.Utils exposing (addressToString)
 import Html.Events.Extra.Mouse as Mouse
+import Html.Events.Extra.Touch as Touch
 import Html.Events.Extra.Wheel as Wheel
 import Html.Styled exposing (Html, button, div, fromUnstyled, text)
 import Html.Styled.Attributes exposing (css, href, title)
@@ -721,6 +722,43 @@ mouseWheelHandler evt =
 
     else
         ZoomIn
+
+
+touchCoordinates : Touch.Event -> Position
+touchCoordinates touchEvent =
+    List.head touchEvent.changedTouches
+        |> Maybe.map (.clientPos >> (\( x, y ) -> { x = x, y = y }))
+        |> Maybe.withDefault { x = 0, y = 0 }
+
+
+mapTouchStartHandler : Touch.Event -> Msg
+mapTouchStartHandler =
+    touchCoordinates >> MapMouseDown
+
+
+mapTouchEndHandler : Touch.Event -> Msg
+mapTouchEndHandler =
+    touchCoordinates >> MouseUp
+
+
+mapTouchMoveHandler : Touch.Event -> Msg
+mapTouchMoveHandler =
+    touchCoordinates >> MouseMove
+
+
+miniMapTouchStartHandler : Touch.Event -> Msg
+miniMapTouchStartHandler =
+    touchCoordinates >> MiniMapMouseDown
+
+
+miniMapTouchEndHandler : Touch.Event -> Msg
+miniMapTouchEndHandler =
+    mapTouchEndHandler
+
+
+miniMapTouchMoveHandler : Touch.Event -> Msg
+miniMapTouchMoveHandler =
+    mapTouchMoveHandler
 
 
 

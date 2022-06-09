@@ -6,7 +6,6 @@ import Data
         ( ColorId
         , Index
         , Position
-        , PositionWithDelta
         , Price
         , Size
         , WalletInfo
@@ -42,7 +41,7 @@ type Msg
     | MapMouseDown Position
     | MiniMapMouseDown Position
     | MouseUp Position
-    | MouseMove PositionWithDelta
+    | MouseMove Position
     | ZoomIn
     | ZoomOut
     | ZoomInCenter
