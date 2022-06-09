@@ -1,4 +1,4 @@
-Source code of [TheSpace](https://thespace.game) official client app.
+Source code of [TheSpace](https://thespace.game) official app.
 
 ## Development
 
@@ -6,7 +6,6 @@ Source code of [TheSpace](https://thespace.game) official client app.
 
 - Elm v0.19 https://guide.elm-lang.org/install/
 - Node/NPM (recent version) https://docs.npmjs.com/cli/v8/configuring-npm/install
-- make
 
 ### Install project development dependencies
 
@@ -14,23 +13,21 @@ Source code of [TheSpace](https://thespace.game) official client app.
 npm install --only-dev
 ```
 
-### Auto recompile watcher
+### Auto reload dev server
 
 ```
-npx elm-live src/Main.elm --no-server -- --output=src/Native/elmapp.js
+make dev-server
 ```
 
-*Note: ```src/Native/elmapp.js``` is in .gitignore*
-
-### Auto reload HTTP dev server
+or, in debug mode
 
 ```
-npx live-server --watch=src/Native/ --port=4000 --open=public
+make debug-server
 ```
 
-- app running at: http://127.0.0.1:4000/public/index.html
-
-*Note: here we only use elm-live for auto re-compilation and live-server for auto reloading.*
+#### Notes
+- tmp build elmapp to ```src/Native/elmapp.js``` (in .gitignore).
+- host using ```127.0.0.1:4000``` (not ```localhost``` due to rpc provider whitelisting).
 
 ### Env Management (production/staging/development)
 
@@ -43,7 +40,7 @@ cp src/Env/(Production|Staging|Development).env src/Env.elm
 ### Backup current env
 
 ```
-make backupEnv
+make backup-env
 ```
 
 This will back up ```src/Env.elm``` to ```src/Env.bak```.
@@ -52,7 +49,7 @@ This will back up ```src/Env.elm``` to ```src/Env.bak```.
 ### Restore backup env
 
 ```
-make restoreEnv
+make restore-env
 ```
 
 This will restore ```src/Env.bak``` to ```src/Env.elm```, and use ```src/Env/Development.env``` if ```src/Env.bak``` not exists.
@@ -60,24 +57,28 @@ This will restore ```src/Env.bak``` to ```src/Env.elm```, and use ```src/Env/Dev
 
 ## Release
 
+### Production Release
+
 ```
-make release
+make prod
 ```
 
-This will:
+### Staging Release
+
+```
+make stag
+```
+
+These commands will:
+
 1. backup current env
-2. switch to production env
-3. compile and bundle current code to ```-optimized``` build to ```build/app.js```
-4. uglify and minify ```build/app.js``` to ```build/app.min.js```
-5. generate ```build/index.html``` using MD5 checksum of ```app.min.js``` as version(```?v=version```).
-6. remove ```build/app.js```
-7. restore backed up env
-
-## Notes on CI
-
-- release version of ```app.min.js``` and ```release.html``` are checked into git in the ```build/``` folder.
-- ```build/index.html``` import ```app.min.js``` as ```<script src="./app.min.js?v=$(md5_of_app.min.js)"></script>```
-- CI is to simply deploy all files under `build/`.
+2. switch to production/staging env
+3. compile current Elm code with ```--optimize``` flag to ```src/Native/elmappesm.js```
+4. bundle ```elmappesm.js``` with js files to ```current/(prod|stag)/app.js```
+5. uglify and minify ```current/(prod|stag)/app.js``` to ```current/(prod|stag)/app.min.js```
+6. generate ```current/(prod|stag)/index.html``` using MD5 checksum of ```app.min.js``` as version(```?v=version```)
+7. remove ```current/(prod|stag)/app.js``` and ```src/Native/elmappesm.js```
+8. restore backed up env
 
 
 ## App Architecture

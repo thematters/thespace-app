@@ -1,7 +1,7 @@
 module View exposing (view)
 
 import Html.Styled exposing (Html, div)
-import Html.Styled.Lazy exposing (lazy2, lazy3, lazy5, lazy6, lazy7)
+import Html.Styled.Lazy exposing (lazy2, lazy3, lazy5, lazy7)
 import Model exposing (AppMode(..), Model)
 import Msg exposing (Msg)
 import View.Canvas as Canvas

@@ -36,6 +36,4 @@ env =
     , polyscanEndpoint = "https://polygonscan.com/"
     , snapshotUriPrefix = "https://d3ogaonsclhjen.cloudfront.net/"
     , debug = False
-
-    --, debug = True
     }

@@ -43,7 +43,7 @@ import Data
         )
 import Data.Icon as Icons
 import Eth.Defaults exposing (zeroAddress)
-import Eth.Units exposing (EthUnit(..), bigIntToWei, toWei)
+import Eth.Units exposing (EthUnit(..), toWei)
 import Html.Styled exposing (Html, button, div, input, text)
 import Html.Styled.Attributes exposing (css, href, title, type_, value)
 import Html.Styled.Events exposing (onClick, onInput)

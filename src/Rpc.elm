@@ -73,7 +73,6 @@ import Data
         )
 import Env exposing (env)
 import Eth.Decode as ED
-import Eth.Defaults exposing (zeroAddress)
 import Eth.Encode as EE
 import Eth.Types exposing (Address, BlockId(..), Call, Hex)
 import Eth.Units exposing (EthUnit(..))
