@@ -12,6 +12,7 @@ import Data exposing (..)
 import Dict exposing (Dict)
 import InfiniteList
 import Model.Assets as A
+import Model.Playback exposing (PlaybackConfig)
 
 
 type alias Flags =
@@ -140,28 +141,6 @@ type AppMode
     | Playback PlaybackConfig
 
 
-type alias PlaybackConfig =
-    { from : Int
-    , to : Int
-    , shareFrom : Int
-    , shareTo : Int
-    , current : Int
-    , status : PlaybackStatus
-    , speed : PlaybackSpeed
-    }
-
-
-type PlaybackStatus
-    = PlaybackStarted
-    | PlaybackPaused
-
-
-type PlaybackSpeed
-    = OneX
-    | TwoX
-    | FourX
-
-
 type MiniMapMode
     = BirdeyeMiniMap
     | CollapsedMiniMap
@@ -258,44 +237,6 @@ initWatchIds =
     , ubi = Nothing
     , default = Nothing
     }
-
-
-initPlaybackConfig : BlockNumber -> BlockNumber -> PlaybackConfig
-initPlaybackConfig from to =
-    { from = from
-    , to = to
-    , shareFrom = from
-    , shareTo = to
-    , speed = OneX
-    , current = 0
-    , status = PlaybackPaused
-    }
-
-
-playbackSpeedToString : PlaybackSpeed -> String
-playbackSpeedToString spd =
-    case spd of
-        OneX ->
-            "1X"
-
-        TwoX ->
-            "2X"
-
-        FourX ->
-            "4X"
-
-
-nextPlaybackSpeed : PlaybackSpeed -> PlaybackSpeed
-nextPlaybackSpeed spd =
-    case spd of
-        OneX ->
-            TwoX
-
-        TwoX ->
-            FourX
-
-        FourX ->
-            OneX
 
 
 responsiveMiniMapMode : Size -> MiniMapMode
