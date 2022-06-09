@@ -31,6 +31,7 @@ import Data
         )
 import Dict exposing (Dict)
 import Html.Events.Extra.Mouse exposing (onDown)
+import Html.Events.Extra.Touch exposing (onEnd, onMove, onStart)
 import Html.Events.Extra.Wheel exposing (onWheel)
 import Html.Styled exposing (Html, canvas, div)
 import Html.Styled.Attributes exposing (css, fromUnstyled, id)
@@ -62,6 +63,9 @@ viewCanvas dragging pagePos =
         , css [ zIndex (int canvaszIndex), cursor cursor_ ]
         , onDown C.mapMouseDownHandler |> fromUnstyled
         , onWheel C.mouseWheelHandler |> fromUnstyled
+        , onStart C.mapTouchStartHandler |> fromUnstyled
+        , onMove C.mapTouchMoveHandler |> fromUnstyled
+        , onEnd C.mapTouchEndHandler |> fromUnstyled
         ]
         []
 

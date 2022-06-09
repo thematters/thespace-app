@@ -300,7 +300,7 @@ nextPlaybackSpeed spd =
 
 responsiveMiniMapMode : Size -> MiniMapMode
 responsiveMiniMapMode ( _, winH ) =
-    if toFloat winH < 3 * miniMapHeight then
+    if toFloat winH < 4 * miniMapHeight then
         CollapsedMiniMap
 
     else
@@ -309,7 +309,7 @@ responsiveMiniMapMode ( _, winH ) =
 
 responsiveSiebarMode : Size -> SidebarMode -> SidebarMode
 responsiveSiebarMode ( winW, _ ) ( _, infoType ) =
-    if toFloat winW < 3 * sidebarWidth then
+    if toFloat winW < 4 * sidebarWidth then
         ( CollapsedSidebar, infoType )
 
     else

@@ -22,6 +22,7 @@ import Data
         )
 import Data.Icon as Icons
 import Html.Events.Extra.Mouse exposing (onDown)
+import Html.Events.Extra.Touch exposing (onEnd, onMove, onStart)
 import Html.Events.Extra.Wheel exposing (onWheel)
 import Html.Styled exposing (Html, canvas, div)
 import Html.Styled.Attributes exposing (css, fromUnstyled, id)
@@ -35,6 +36,9 @@ import View.Common
         , iconLight
         , iconNormal
         , miniMapMouseDownHandler
+        , miniMapTouchEndHandler
+        , miniMapTouchMoveHandler
+        , miniMapTouchStartHandler
         , modalBackgroundColor
         , modalBoxShadow
         , modalEdge
@@ -179,6 +183,9 @@ miniMapCanvas mode dragging winSize cvs =
                 , css previewStyle
                 , onDown miniMapMouseDownHandler |> fromUnstyled
                 , onWheel mouseWheelHandler |> fromUnstyled
+                , onStart miniMapTouchStartHandler |> fromUnstyled
+                , onMove miniMapTouchMoveHandler |> fromUnstyled
+                , onEnd miniMapTouchEndHandler |> fromUnstyled
                 ]
                 []
     in

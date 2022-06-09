@@ -1,16 +1,6 @@
-module Config.Network.Mainnet exposing (rpcProvider, rpcSocketAddress)
+module Config.Network.Mainnet exposing (rpcProvider)
 
 import Config.Env.Util exposing (RpcProvider)
-
-
-alchemyEndPoint : String
-alchemyEndPoint =
-    "polygon-mainnet.g.alchemy.com/v2/i9AGh_Sw3OXbep71XwSHZuNQUGvzVjJp"
-
-
-rpcSocketAddress : String
-rpcSocketAddress =
-    "wss://" ++ alchemyEndPoint
 
 
 rpcHttpAddress : String
