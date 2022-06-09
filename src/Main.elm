@@ -1866,20 +1866,18 @@ subscriptions model =
 
 browserSubs : List (Sub Msg)
 browserSubs =
-    [ E.onMouseMove
-        (D.map2
-            (\x y -> MouseMove <| position x y)
-            (D.field "pageX" D.float)
-            (D.field "pageY" D.float)
-        )
-    , E.onMouseUp
-        (D.map2
-            (\x y -> MouseUp <| position x y)
-            (D.field "pageX" D.float)
-            (D.field "pageY" D.float)
-        )
+    [ E.onMouseMove mouseEventDecoder
+    , E.onMouseUp mouseEventDecoder
     , E.onResize (\w h -> WindowResize ( w, h ))
     ]
+
+
+mouseEventDecoder : Decoder Msg
+mouseEventDecoder =
+    D.map2
+        (\x y -> MouseUp <| position x y)
+        (D.field "pageX" D.float)
+        (D.field "pageY" D.float)
 
 
 
