@@ -39,6 +39,8 @@ type Msg
       -- Map / MiniMap Ops
     | WindowResize Size
     | MapMouseDown Position
+    | MapPinchDown Float
+    | MapPinchChange Float
     | MiniMapMouseDown Position
     | MouseUp Position
     | MouseMove Position

@@ -325,6 +325,29 @@ update msg model =
             , Cmd.none
             )
 
+        MapPinchDown dis ->
+            ( { model | pinch = Just dis }, Cmd.none )
+
+        MapPinchChange dis ->
+            handleZoom
+                { model | pinch = Just dis }
+                (case model.pinch of
+                    Nothing ->
+                        if dis > 0 then
+                            In
+
+                        else
+                            Out
+
+                    Just prevDis ->
+                        if dis > prevDis then
+                            In
+
+                        else
+                            Out
+                )
+                model.cellPos
+
         MiniMapMouseDown xy ->
             ( { model | dragging = MiniMapDragging xy }, Cmd.none )
 
