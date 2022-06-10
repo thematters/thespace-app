@@ -103,6 +103,9 @@ async function registerWallet(app) {
         switch (msg.method) {
             case "wallet_addEthereumChain":
                 // switch to Polygon, add it if not added.
+                // ... and Yes, MetaMask is THIS stupid:
+                msg.params[0].chainId =
+                    msg.params[0].chainId.toString(16)
                 try {
                     // try switch first
                     await ethereum.request({
@@ -112,9 +115,6 @@ async function registerWallet(app) {
                 } catch (err) {
                     if (err.code === 4902)
                         // add it then switch
-                        // ... and Yes, MetaMask is THIS stupid:
-                        msg.params[0].chainId =
-                            `0x${msg.params[0].chainId.toString(16)}`
                         await ethereum.request(msg)
                 }
                 break
