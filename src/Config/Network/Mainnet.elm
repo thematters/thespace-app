@@ -5,7 +5,7 @@ import Config.Env.Util exposing (RpcProvider)
 
 rpcHttpAddress : String
 rpcHttpAddress =
-    "https://polygon-rpc.com/"
+    "https://polygon-rpc.com"
 
 
 blockExplorerUrls : String

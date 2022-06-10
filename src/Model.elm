@@ -12,6 +12,7 @@ import Data exposing (..)
 import Dict exposing (Dict)
 import InfiniteList
 import Model.Assets as A
+import Model.Playback exposing (PlaybackConfig)
 
 
 type alias Flags =
@@ -34,6 +35,7 @@ initModel =
 
     -- cellPos init to (-1,-1) to not display anything in minimap after init
     , cellPos = { x = -1, y = -1 }
+    , pinch = Nothing
     , dragging = NotDragging
     , cellModalMode = HideTaxUbi
     , selectCell = NoCell
@@ -82,6 +84,9 @@ type alias Model =
 
     -- Current pointing transformed canvas pixel position
     , cellPos : Cell
+
+    -- Current pinch distance
+    , pinch : Maybe Float
 
     -- Current dragging info
     , dragging : Dragging
@@ -138,28 +143,6 @@ type AppMode
     | Realtime
     | PlaybackLoading
     | Playback PlaybackConfig
-
-
-type alias PlaybackConfig =
-    { from : Int
-    , to : Int
-    , shareFrom : Int
-    , shareTo : Int
-    , current : Int
-    , status : PlaybackStatus
-    , speed : PlaybackSpeed
-    }
-
-
-type PlaybackStatus
-    = PlaybackStarted
-    | PlaybackPaused
-
-
-type PlaybackSpeed
-    = OneX
-    | TwoX
-    | FourX
 
 
 type MiniMapMode
@@ -258,44 +241,6 @@ initWatchIds =
     , ubi = Nothing
     , default = Nothing
     }
-
-
-initPlaybackConfig : BlockNumber -> BlockNumber -> PlaybackConfig
-initPlaybackConfig from to =
-    { from = from
-    , to = to
-    , shareFrom = from
-    , shareTo = to
-    , speed = OneX
-    , current = 0
-    , status = PlaybackPaused
-    }
-
-
-playbackSpeedToString : PlaybackSpeed -> String
-playbackSpeedToString spd =
-    case spd of
-        OneX ->
-            "1X"
-
-        TwoX ->
-            "2X"
-
-        FourX ->
-            "4X"
-
-
-nextPlaybackSpeed : PlaybackSpeed -> PlaybackSpeed
-nextPlaybackSpeed spd =
-    case spd of
-        OneX ->
-            TwoX
-
-        TwoX ->
-            FourX
-
-        FourX ->
-            OneX
 
 
 responsiveMiniMapMode : Size -> MiniMapMode

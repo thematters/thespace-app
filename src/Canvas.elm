@@ -51,13 +51,8 @@ import Data
         , sizeToFloatSize
         , validIndex
         )
-import Model
-    exposing
-        ( AppMode(..)
-        , Model
-        , PlaybackSpeed(..)
-        , initPlaybackConfig
-        )
+import Model exposing (AppMode(..), Model)
+import Model.Playback exposing (PlaybackSpeed(..), initPlaybackConfig)
 import Msg exposing (Msg(..))
 
 

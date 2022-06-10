@@ -362,6 +362,11 @@ aboutLink =
     "https://thespace.game/"
 
 
+discordLink : String
+discordLink =
+    "https://discord.com/invite/QphpD4zmfY"
+
+
 installMetaMaskLink : String
 installMetaMaskLink =
     "https://metamask.io/"

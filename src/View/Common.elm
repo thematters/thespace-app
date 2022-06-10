@@ -13,6 +13,7 @@ import Data
         , cellString
         , fromWei
         , indexToCell
+        , positionDistance
         , priceAbbrLong
         , priceAbbrNormal
         , priceAbbrShort
@@ -724,16 +725,52 @@ mouseWheelHandler evt =
         ZoomIn
 
 
-touchCoordinates : Touch.Event -> Position
-touchCoordinates touchEvent =
-    List.head touchEvent.changedTouches
+touchCoordinates_ : List Touch.Touch -> Position
+touchCoordinates_ touches =
+    List.head touches
         |> Maybe.map (.clientPos >> (\( x, y ) -> { x = x, y = y }))
         |> Maybe.withDefault { x = 0, y = 0 }
 
 
+touchCoordinates : Touch.Event -> Position
+touchCoordinates touchEvent =
+    touchCoordinates_ touchEvent.changedTouches
+
+
 mapTouchStartHandler : Touch.Event -> Msg
-mapTouchStartHandler =
-    touchCoordinates >> MapMouseDown
+mapTouchStartHandler e =
+    if List.length e.changedTouches >= 2 then
+        let
+            xy1 =
+                touchCoordinates_ e.changedTouches
+
+            xy2 =
+                List.tail e.changedTouches
+                    |> Maybe.withDefault []
+                    |> touchCoordinates_
+        in
+        MapPinchDown <| positionDistance xy1 xy2
+
+    else
+        e |> touchCoordinates |> MapTouchDown
+
+
+mapTouchMoveHandler : Touch.Event -> Msg
+mapTouchMoveHandler e =
+    if List.length e.targetTouches >= 2 then
+        let
+            xy1 =
+                touchCoordinates_ e.targetTouches
+
+            xy2 =
+                List.tail e.targetTouches
+                    |> Maybe.withDefault []
+                    |> touchCoordinates_
+        in
+        MapPinchChange <| positionDistance xy1 xy2
+
+    else
+        e |> touchCoordinates |> TouchMove
 
 
 mapTouchEndHandler : Touch.Event -> Msg
@@ -741,24 +778,19 @@ mapTouchEndHandler =
     touchCoordinates >> MouseUp
 
 
-mapTouchMoveHandler : Touch.Event -> Msg
-mapTouchMoveHandler =
-    touchCoordinates >> MouseMove
-
-
 miniMapTouchStartHandler : Touch.Event -> Msg
 miniMapTouchStartHandler =
     touchCoordinates >> MiniMapMouseDown
 
 
-miniMapTouchEndHandler : Touch.Event -> Msg
-miniMapTouchEndHandler =
-    mapTouchEndHandler
-
-
 miniMapTouchMoveHandler : Touch.Event -> Msg
 miniMapTouchMoveHandler =
-    mapTouchMoveHandler
+    touchCoordinates >> MouseMove
+
+
+miniMapTouchEndHandler : Touch.Event -> Msg
+miniMapTouchEndHandler =
+    touchCoordinates >> MouseUp
 
 
 
