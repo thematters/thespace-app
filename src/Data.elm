@@ -341,6 +341,18 @@ positionDelta p1 p2 =
     { dx = p1.x - p2.x, dy = p1.y - p2.y }
 
 
+positionDistance : Position -> Position -> Float
+positionDistance p1 p2 =
+    let
+        dx =
+            p1.x - p2.x
+
+        dy =
+            p1.y - p2.y
+    in
+    sqrt (dx * dx + dy * dy)
+
+
 posToCell : Transform -> Position -> Cell
 posToCell trans pos =
     { x = truncate ((pos.x - trans.dx) / trans.zoom)
