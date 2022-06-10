@@ -740,31 +740,37 @@ touchCoordinates touchEvent =
 mapTouchStartHandler : Touch.Event -> Msg
 mapTouchStartHandler e =
     if List.length e.changedTouches >= 2 then
-        MapPinchDown <|
-            positionDistance
-                (touchCoordinates_ e.changedTouches)
-                (touchCoordinates_ <|
-                    Maybe.withDefault [] <|
-                        List.tail e.changedTouches
-                )
+        let
+            xy1 =
+                touchCoordinates_ e.changedTouches
+
+            xy2 =
+                List.tail e.changedTouches
+                    |> Maybe.withDefault []
+                    |> touchCoordinates_
+        in
+        MapPinchDown <| positionDistance xy1 xy2
 
     else
-        e |> touchCoordinates |> MapMouseDown
+        e |> touchCoordinates |> MapTouchDown
 
 
 mapTouchMoveHandler : Touch.Event -> Msg
 mapTouchMoveHandler e =
-    if List.length e.changedTouches >= 2 then
-        MapPinchChange <|
-            positionDistance
-                (touchCoordinates_ e.changedTouches)
-                (touchCoordinates_ <|
-                    Maybe.withDefault [] <|
-                        List.tail e.changedTouches
-                )
+    if List.length e.targetTouches >= 2 then
+        let
+            xy1 =
+                touchCoordinates_ e.targetTouches
+
+            xy2 =
+                List.tail e.targetTouches
+                    |> Maybe.withDefault []
+                    |> touchCoordinates_
+        in
+        MapPinchChange <| positionDistance xy1 xy2
 
     else
-        e |> touchCoordinates |> MouseMove
+        e |> touchCoordinates |> TouchMove
 
 
 mapTouchEndHandler : Touch.Event -> Msg
@@ -779,12 +785,12 @@ miniMapTouchStartHandler =
 
 miniMapTouchMoveHandler : Touch.Event -> Msg
 miniMapTouchMoveHandler =
-    mapTouchMoveHandler
+    touchCoordinates >> MouseMove
 
 
 miniMapTouchEndHandler : Touch.Event -> Msg
 miniMapTouchEndHandler =
-    mapTouchEndHandler
+    touchCoordinates >> MouseUp
 
 
 

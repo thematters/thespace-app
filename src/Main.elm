@@ -325,39 +325,62 @@ update msg model =
             , Cmd.none
             )
 
+        MapTouchDown xy ->
+            ( if model.pinch == Nothing then
+                { model
+                    | dragging = MapDragging xy
+                    , pagePos = xy
+                    , cellPos = posToCell model.canvas xy
+                }
+
+              else
+                model
+            , Cmd.none
+            )
+
         MapPinchDown dis ->
             ( { model | pinch = Just dis }, Cmd.none )
 
         MapPinchChange dis ->
-            handleZoom
-                { model | pinch = Just dis }
-                (case model.pinch of
-                    Nothing ->
-                        if dis > 0 then
-                            In
+            let
+                zoom d1 d2 =
+                    if d1 < d2 then
+                        Just Out
 
-                        else
-                            Out
+                    else if d1 > d2 then
+                        Just In
 
-                    Just prevDis ->
-                        if dis > prevDis then
-                            In
+                    else
+                        Nothing
 
-                        else
-                            Out
-                )
-                model.cellPos
+                m =
+                    { model | pinch = Just dis }
+            in
+            case zoom dis <| Maybe.withDefault 0 <| model.pinch of
+                Just direction ->
+                    let
+                        cc =
+                            centerCell model.canvas model.winSize
+                    in
+                    handleZoom m direction cc
+
+                Nothing ->
+                    ( m, Cmd.none )
 
         MiniMapMouseDown xy ->
             ( { model | dragging = MiniMapDragging xy }, Cmd.none )
 
         MouseUp xy ->
-            case model.dragging of
+            let
+                m =
+                    { model | pinch = Nothing }
+            in
+            case m.dragging of
                 NotDragging ->
-                    handleDraggingEnd model
+                    handleDraggingEnd m
 
                 MiniMapDragging _ ->
-                    handleDraggingEnd model
+                    handleDraggingEnd m
 
                 MapDragging dgpos_ ->
                     let
@@ -377,11 +400,30 @@ update msg model =
                         stillAsClick dgpos =
                             not <| dragEnough dgpos
                     in
-                    if cellInMap model.cellPos && stillAsClick dgpos_ then
-                        handleSelectCell model model.cellPos
+                    if cellInMap m.cellPos && stillAsClick dgpos_ then
+                        handleSelectCell m m.cellPos
 
                     else
                         handleDraggingEnd model
+
+        TouchMove xy ->
+            if model.pinch == Nothing then
+                let
+                    m =
+                        { model
+                            | pagePos = xy
+                            , cellPos = posToCell model.canvas xy
+                        }
+                in
+                case model.dragging of
+                    MapDragging _ ->
+                        handleMapDragging m <| positionDelta xy model.pagePos
+
+                    _ ->
+                        ( m, Cmd.none )
+
+            else
+                ( model, Cmd.none )
 
         MouseMove xy ->
             let
