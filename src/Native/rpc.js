@@ -112,6 +112,9 @@ async function registerWallet(app) {
                 } catch (err) {
                     if (err.code === 4902)
                         // add it then switch
+                        // ... and Yes, MetaMask is THIS stupid:
+                        msg.params[0].chainId =
+                            `0x${msg.params[0].chainId.toString(16)}`
                         await ethereum.request(msg)
                 }
                 break
