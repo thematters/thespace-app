@@ -471,7 +471,9 @@ polyscanLink href_ e =
         , Html.Styled.Attributes.target "_blank"
         ]
         [ div
-            [ css [ displayFlex, alignItems center, property "gap" "2px" ] ]
+            [ css [ displayFlex, alignItems center, property "gap" "2px" ]
+            , title "View on PolygonScan"
+            ]
             [ e, Icons.polygon ]
         ]
 
