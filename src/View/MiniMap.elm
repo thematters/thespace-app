@@ -25,7 +25,7 @@ import Html.Events.Extra.Mouse exposing (onDown)
 import Html.Events.Extra.Touch exposing (onEnd, onMove, onStart)
 import Html.Events.Extra.Wheel exposing (onWheel)
 import Html.Styled exposing (Html, canvas, div)
-import Html.Styled.Attributes exposing (css, fromUnstyled, id)
+import Html.Styled.Attributes exposing (css, fromUnstyled, id, title)
 import Html.Styled.Events exposing (onClick)
 import Model exposing (AppMode(..), Dragging(..), MiniMapMode(..))
 import Msg exposing (Msg(..))
@@ -313,26 +313,38 @@ switchMode mode =
                 BirdeyeMiniMap ->
                     ( CollapsedMiniMap, Icons.chevronDown )
     in
-    div [ css style_, onClick <| MiniMapModeChange to ] [ iconNormal icon ]
+    div
+        [ css style_
+        , title <|
+            case mode of
+                CollapsedMiniMap ->
+                    "Birdeye"
+
+                BirdeyeMiniMap ->
+                    "Collapse"
+        , onClick <| MiniMapModeChange to
+        ]
+        [ iconNormal icon ]
 
 
 zoomIn : ZoomLevel -> Html Msg
 zoomIn =
-    zoom_ maxZoom Icons.zoomIn ZoomInCenter
+    zoom_ maxZoom Icons.zoomIn ZoomInCenter "Zoom In"
 
 
 zoomOut : ZoomLevel -> Html Msg
 zoomOut =
-    zoom_ minZoom Icons.zoomOut ZoomOutCenter
+    zoom_ minZoom Icons.zoomOut ZoomOutCenter "Zoom Out"
 
 
-zoom_ : ZoomLevel -> Html msg -> msg -> ZoomLevel -> Html msg
-zoom_ limit icon evt zoom =
+zoom_ : ZoomLevel -> Html msg -> msg -> String -> ZoomLevel -> Html msg
+zoom_ limit icon evt title_ zoom =
     if zoom == limit then
-        div [] [ iconLight icon ]
+        div [ title title_ ] [ iconLight icon ]
 
     else
-        div [ css [ cursor pointer ], onClick evt ] [ iconNormal icon ]
+        div [ css [ cursor pointer ], title title_, onClick evt ]
+            [ iconNormal icon ]
 
 
 reset : MiniMapMode -> Html Msg
@@ -349,4 +361,5 @@ reset mode =
                 BirdeyeMiniMap ->
                     ( baseStyle, Icons.maximize )
     in
-    div [ css style_, onClick ZoomReset ] [ iconNormal icon ]
+    div [ css style_, title "Reset Zoom", onClick ZoomReset ]
+        [ iconNormal icon ]

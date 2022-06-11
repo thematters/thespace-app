@@ -306,7 +306,11 @@ nav uiMode =
             ]
 
         iconsStyle =
-            [ displayFlex, property "gap" "10px", marginTop (px -4) ]
+            [ displayFlex
+            , alignItems center
+            , property "gap" "20px"
+            , marginTop (px -4)
+            ]
 
         logo =
             img [ src logoDataUri, css [ height (px navHeight) ] ] []
@@ -322,7 +326,7 @@ nav uiMode =
                 ]
 
         info_ =
-            linkIcon Config.aboutLink "About" Icon.info
+            linkIcon Config.aboutLink "About" Icon.theSpaceSmall
 
         discord =
             linkIcon Config.discordLink "Discord" Icon.discord
@@ -330,13 +334,20 @@ nav uiMode =
         --playback =
         --    div
         --        [ css [ cursor pointer ]
-        --        , title "Playback Recent Changes"
+        --        , title "Playback Recent History"
         --        , onClick <| AppModeChange PlaybackLoading
         --        ]
         --        [ iconNormal Icon.clock ]
         modeSwitch =
             div
                 [ css [ cursor pointer ]
+                , title <|
+                    case uiMode of
+                        CollapsedSidebar ->
+                            "Activity"
+
+                        ExpandedSidebar ->
+                            "Collapse"
                 , onClick <|
                     SidebarModeSwitch <|
                         case uiMode of
@@ -358,10 +369,10 @@ nav uiMode =
         icons =
             div [ css iconsStyle ]
                 [ info_
-                , discord
-                , modeSwitch
 
                 --, playback
+                , discord
+                , modeSwitch
                 ]
     in
     div

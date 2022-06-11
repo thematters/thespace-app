@@ -314,10 +314,17 @@ refreshSmall =
         ]
 
 
+spacePath : List (Html msg)
+spacePath =
+    [ Svg.path [ d "M18.8035 9.10583H8.75903V19.1503H18.8035V9.10583Z" ] []
+    , Svg.path [ d "M0 0V40.7248H40.7248V0H0ZM36.6511 36.6511H4.07374V4.07374H36.6511V36.6511Z" ] []
+    ]
+
+
 theSpace : Html msg
 theSpace =
     svg
-        [ class <| "thespace-sm"
+        [ class <| "thespace"
         , height "120"
         , width "120"
         , fill "currentColor"
@@ -325,17 +332,29 @@ theSpace =
         , strokeWidth "0"
         , viewBox "0 0 41 41"
         ]
-        [ Svg.path [ d "M18.8035 9.10583H8.75903V19.1503H18.8035V9.10583Z" ] []
-        , Svg.path [ d "M0 0V40.7248H40.7248V0H0ZM36.6511 36.6511H4.07374V4.07374H36.6511V36.6511Z" ] []
+        spacePath
+
+
+theSpaceSmall : Html msg
+theSpaceSmall =
+    svg
+        [ class <| "thespace-sm"
+        , height "20"
+        , width "20"
+        , fill "currentColor"
+        , stroke "none"
+        , strokeWidth "0"
+        , viewBox "0 0 41 41"
         ]
+        spacePath
 
 
 discord : Html msg
 discord =
     svg
         [ class <| "discord"
-        , height "28"
-        , width "28"
+        , height "26"
+        , width "26"
         , fill "currentColor"
         , stroke "none"
         , strokeWidth "0"
