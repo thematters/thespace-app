@@ -114,7 +114,6 @@ async function registerWallet(app) {
                     })
                 } catch (switchErr) {
                     if (switchErr.code === 4902 || switchErr.code ===  -32603)
-                        console.log("switchErr:", switchErr)
                         try {
                             await ethereum.request(msg)
                         } catch (addErr) {
