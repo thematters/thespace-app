@@ -1,5 +1,6 @@
 let env = "prod"
 let debug = false
+let wsClosed = false
 
 function registerSocket(app, ws) {
     const debugOnSend = msg => {
@@ -26,7 +27,10 @@ function registerSocket(app, ws) {
     }
 
     ws.onopen = () => app.ports.rpcSocketControl.send(true)
-    ws.onclose = () => app.ports.rpcSocketControl.send(false)
+    ws.onclose = () => {
+        wsClosed = true
+        app.ports.rpcSocketControl.send(false)
+    }
 }
 
 async function registerWallet(app) {
@@ -102,20 +106,19 @@ async function registerWallet(app) {
 
         switch (msg.method) {
             case "wallet_addEthereumChain":
-                // switch to Polygon, add it if not added.
                 try {
                     // try switch first
                     await ethereum.request({
                         method: "wallet_switchEthereumChain",
                         params: [{ chainId: msg.params[0].chainId }],
                     })
-                } catch (err) {
-                    if (err.code === 4902)
-                        // add it then switch
-                        // ... and Yes, MetaMask is THIS stupid:
-                        msg.params[0].chainId =
-                            `0x${msg.params[0].chainId.toString(16)}`
-                        await ethereum.request(msg)
+                } catch (switchErr) {
+                    if (switchErr.code === 4902 || switchErr.code ===  -32603)
+                        try {
+                            await ethereum.request(msg)
+                        } catch (addErr) {
+                            // ignore
+                        }
                 }
                 break
 
@@ -156,11 +159,8 @@ async function registerWallet(app) {
                     const txRes = await tx
                     send({ type: "tx-send", data: msg.index })
                 } catch (err) {
-                    if (err.code === -32603) {
-                        send({ type: "tx-underpriced", data: msg.index })
-                    } else {
+                    if (err.code === 4001)
                         send({ type: "tx-rejected", data: msg.index })
-                    }
                 }
                 break
 
@@ -189,6 +189,11 @@ async function registerWallet(app) {
 }
 
 export function registerRpc(app) {
+    addEventListener('visibilitychange', event => {
+        if (wsClosed)
+            window.location.reload()
+    })
+
     app.ports.openRpcSocket.subscribe(
         (data) => {
             env = data.env

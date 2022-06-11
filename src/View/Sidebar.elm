@@ -324,8 +324,9 @@ nav uiMode =
         info_ =
             linkIcon Config.aboutLink "About" Icon.info
 
-        --discord =
-        --    linkIcon Config.discordLink "Discord" Icon.discord
+        discord =
+            linkIcon Config.discordLink "Discord" Icon.discord
+
         --playback =
         --    div
         --        [ css [ cursor pointer ]
@@ -357,8 +358,7 @@ nav uiMode =
         icons =
             div [ css iconsStyle ]
                 [ info_
-
-                --, discord
+                , discord
                 , modeSwitch
 
                 --, playback

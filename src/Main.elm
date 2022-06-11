@@ -343,11 +343,14 @@ update msg model =
 
         MapPinchChange dis ->
             let
+                threshhold =
+                    5
+
                 zoom d1 d2 =
-                    if d1 < d2 then
+                    if d2 - d1 > threshhold then
                         Just Out
 
-                    else if d1 > d2 then
+                    else if d1 - d2 > threshhold then
                         Just In
 
                     else
@@ -1937,16 +1940,16 @@ subscriptions model =
 
 browserSubs : List (Sub Msg)
 browserSubs =
-    [ E.onMouseMove mouseEventDecoder
-    , E.onMouseUp mouseEventDecoder
+    [ E.onMouseMove <| mouseEventDecoder MouseMove
+    , E.onMouseUp <| mouseEventDecoder MouseUp
     , E.onResize (\w h -> WindowResize ( w, h ))
     ]
 
 
-mouseEventDecoder : Decoder Msg
-mouseEventDecoder =
+mouseEventDecoder : (Position -> Msg) -> Decoder Msg
+mouseEventDecoder msg =
     D.map2
-        (\x y -> MouseUp <| position x y)
+        (\x y -> msg <| position x y)
         (D.field "pageX" D.float)
         (D.field "pageY" D.float)
 
