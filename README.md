@@ -73,7 +73,7 @@ These commands will:
 
 1. backup current env
 2. switch to production/staging env
-3. compile current Elm code with ```--optimize``` flag to ```src/Native/elmappesm.js```
+3. compile current Elm code with ```--optimize``` flag to ```src/Native/elmappesm.js``` (ES6 Module).
 4. bundle ```elmappesm.js``` with js files to ```current/(prod|stag)/app.js```
 5. uglify and minify ```current/(prod|stag)/app.js``` to ```current/(prod|stag)/app.min.js```
 6. generate ```current/(prod|stag)/index.html``` using MD5 checksum of ```app.min.js``` as version(```?v=version```)
