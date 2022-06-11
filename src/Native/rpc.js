@@ -1,5 +1,6 @@
 let env = "prod"
 let debug = false
+let wsClosed = false
 
 function registerSocket(app, ws) {
     const debugOnSend = msg => {
@@ -26,7 +27,10 @@ function registerSocket(app, ws) {
     }
 
     ws.onopen = () => app.ports.rpcSocketControl.send(true)
-    ws.onclose = () => app.ports.rpcSocketControl.send(false)
+    ws.onclose = () => {
+        wsClosed = true
+        app.ports.rpcSocketControl.send(false)
+    }
 }
 
 async function registerWallet(app) {
@@ -186,6 +190,11 @@ async function registerWallet(app) {
 }
 
 export function registerRpc(app) {
+    addEventListener('visibilitychange', event => {
+        if (wsClosed)
+            window.location.reload()
+    })
+
     app.ports.openRpcSocket.subscribe(
         (data) => {
             env = data.env
