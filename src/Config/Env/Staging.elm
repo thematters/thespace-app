@@ -4,6 +4,11 @@ import Config.Env.Util exposing (Env, toContracts)
 import Config.Network.Mainnet as Net
 
 
+rpcSocketAddress : String
+rpcSocketAddress =
+    "wss://polygon-mainnet.g.alchemy.com/v2/NLv95hqjMltinp-8MKwMYyJphTqn2YAp"
+
+
 erc20 : String
 erc20 =
     "0x41d4c1973d3f582439701bdfdd3d2c99130acab0"
@@ -31,7 +36,7 @@ env =
     , mapHeight = 1000
     , minZoom = 2
     , contracts = toContracts erc20 space registry snapper
-    , rpcSocketAddress = "wss://polygon-mainnet.g.alchemy.com/v2/NLv95hqjMltinp-8MKwMYyJphTqn2YAp"
+    , rpcSocketAddress = rpcSocketAddress
     , rpcProvider = Net.rpcProvider
     , polyscanEndpoint = "https://polygonscan.com/"
     , snapshotUriPrefix = "https://d23t3m1s3moj89.cloudfront.net/"
