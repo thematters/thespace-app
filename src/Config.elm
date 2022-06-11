@@ -364,7 +364,7 @@ aboutLink =
 
 discordLink : String
 discordLink =
-    "https://discord.com/invite/QphpD4zmfY"
+    "https://discord.gg/thespace"
 
 
 installMetaMaskLink : String
