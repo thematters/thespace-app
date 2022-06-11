@@ -343,11 +343,14 @@ update msg model =
 
         MapPinchChange dis ->
             let
+                threshhold =
+                    5
+
                 zoom d1 d2 =
-                    if d1 < d2 then
+                    if d2 - d1 > threshhold then
                         Just Out
 
-                    else if d1 > d2 then
+                    else if d1 - d2 > threshhold then
                         Just In
 
                     else
