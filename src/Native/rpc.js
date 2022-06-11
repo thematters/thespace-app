@@ -104,18 +104,25 @@ async function registerWallet(app) {
             case "wallet_addEthereumChain":
                 // switch to Polygon, add it if not added.
                 // ... and Yes, MetaMask is THIS stupid:
-                msg.params[0].chainId =
-                    msg.params[0].chainId.toString(16)
+                // console.log(">>> msg.params[0]:", msg.params[0])
+                // console.log(">>> ChainId(old):", msg.params[0].chainId)
+                // const chainId = `${msg.params[0].chainId.toString(16)}`
+                // msg.params[0].chainId = chainId
+                // console.log(">>> ChainId:", chainId, msg.params[0].chainId)
                 try {
                     // try switch first
                     await ethereum.request({
                         method: "wallet_switchEthereumChain",
                         params: [{ chainId: msg.params[0].chainId }],
                     })
-                } catch (err) {
-                    if (err.code === 4902)
-                        // add it then switch
-                        await ethereum.request(msg)
+                } catch (switchErr) {
+                    if (switchErr.code === 4902 || switchErr.code ===  -32603)
+                        console.log("switchErr:", switchErr)
+                        try {
+                            await ethereum.request(msg)
+                        } catch (addErr) {
+                            // ignore
+                        }
                 }
                 break
 
@@ -156,11 +163,8 @@ async function registerWallet(app) {
                     const txRes = await tx
                     send({ type: "tx-send", data: msg.index })
                 } catch (err) {
-                    if (err.code === -32603) {
-                        send({ type: "tx-underpriced", data: msg.index })
-                    } else {
+                    if (err.code === 4001)
                         send({ type: "tx-rejected", data: msg.index })
-                    }
                 }
                 break
 
