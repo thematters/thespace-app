@@ -126,7 +126,7 @@ positionStyle winSize zoom pos =
             px modalEdge
     in
     case
-        ( windowW - pos.x >= modalW, windowH - pos.y >= modalH )
+        ( windowW - pos.x >= pos.x, windowH - pos.y >= pos.y )
     of
         ( True, True ) ->
             [ left (px (pos.x + zoom))

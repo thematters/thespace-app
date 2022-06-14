@@ -1,6 +1,6 @@
 module View.Common exposing (..)
 
-import Config exposing (rpcProvider, tokenSign)
+import Config exposing (cellModalEdge, rpcProvider, tokenSign)
 import Css exposing (..)
 import Css.Global
 import Data
@@ -204,7 +204,7 @@ highlightColor2 =
 
 modalEdge : Float
 modalEdge =
-    20
+    cellModalEdge
 
 
 modalBorder : Style
