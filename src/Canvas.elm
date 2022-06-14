@@ -3,6 +3,7 @@ port module Canvas exposing
     , centerToCellTransform
     , endPlayback
     , forward
+    , freeMoveTransform
     , initLatestColors
     , initMapSnapshot
     , initPlayback
@@ -132,6 +133,16 @@ moveTransform dx dy winSize cvs =
     let
         ( dx1, dy1 ) =
             ( cvs.dx + dx, cvs.dy + dy ) |> moveClamp cvs.zoom winSize
+    in
+    { dx = dx1, dy = dy1, zoom = cvs.zoom }
+
+
+freeMoveTransform : Delta -> Delta -> Transform -> Transform
+freeMoveTransform dx dy cvs =
+    -- move transfrom but no clamping to 1/2 window width/height
+    let
+        ( dx1, dy1 ) =
+            ( cvs.dx + dx, cvs.dy + dy )
     in
     { dx = dx1, dy = dy1, zoom = cvs.zoom }
 

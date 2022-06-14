@@ -1001,7 +1001,7 @@ handleSelectCell model cell =
                     else
                         dyBottom - cH - edge
             in
-            cvsScale |> C.moveTransform dxAdjust dyAdjust model.winSize
+            cvsScale |> C.freeMoveTransform dxAdjust dyAdjust
 
         index =
             cellToIndex cell
