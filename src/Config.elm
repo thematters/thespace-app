@@ -120,6 +120,11 @@ cellModalWidth =
     446
 
 
+cellModalEdge : Float
+cellModalEdge =
+    20
+
+
 cellModalHeight : Float
 cellModalHeight =
     446

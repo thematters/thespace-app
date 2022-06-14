@@ -1,12 +1,12 @@
 dev-server :
 	npx elm-live src/Main.elm \
-	--host=127.0.0.1 \
+	--host=0.0.0.0 \
 	--start-page=src/Native/app.html --open \
 	-- --output=src/Native/elmapp.js --optimize
 
 debug-server :
 	npx elm-live src/Main.elm \
-	--host=127.0.0.1 \
+	--host=0.0.0.0 \
 	--start-page=src/Native/app.html --open \
 	-- --output=src/Native/elmapp.js --debug
 

@@ -192,14 +192,13 @@ async function render(cmd) {
         // init realtime: map snapshot
         case "initMapSnapshot":
             RGBAs = args.slice(8, 25).map(i => `0x${i}` >> 0)
-            // ["i", dx, dy, zoom, ww, wh, mw, mh]
-            var xs = parseArgs(args.slice(1, 8))
+            var [dx, dy, zoom, wW, wH, mW, mH] = parseArgs(args.slice(1, 8))
+            mapW = mW
+            mapH = mH
             var trans = ctx.getTransform()
-            mapW = xs[5]
-            mapH = xs[6]
-            setTranslate(trans, xs[0], xs[1])
-            setScale(trans, xs[2])
-            updateContext(xs[3], xs[4])
+            setTranslate(trans, dx, dy)
+            setScale(trans, zoom)
+            updateContext(wW, wH)
             ctx.setTransform(trans)
             let img = new Image()
             img.crossOrigin = "Anonymous"
@@ -207,11 +206,11 @@ async function render(cmd) {
             img.onload = () => {
                 const tmpcvs = document.createElement('canvas')
                 const tmpctx = tmpcvs.getContext('2d')
-                tmpctx.canvas.width = xs[5]
-                tmpctx.canvas.height = xs[6]
+                tmpctx.canvas.width = mW
+                tmpctx.canvas.height = mH
                 tmpctx.imageSmoothingEnabled = false
-                tmpctx.drawImage(img, 0, 0, mapW, mapH)
-                mapImageData = tmpctx.getImageData(0, 0, mapW, mapH)
+                tmpctx.drawImage(img, 0, 0, mW, mH)
+                mapImageData = tmpctx.getImageData(0, 0, mW, mH)
                 mapData = new Uint8ClampedArray(mapImageData.data)
                 mapImageData.data.set(mapData)
                 tmpcvs.remove()
@@ -237,35 +236,18 @@ async function render(cmd) {
                 )
             break            
 
-        // move
-        case "move":
-            // [dx, dy]
-            var xs = parseArgs(args.slice(1, 3))
+        // trans: move / scale / reset
+        case "trans":
+            var [dx, dy, zoom, wW, wH] = parseArgs(args.slice(1, 6))
             var trans = ctx.getTransform()
-            setTranslate(trans, xs[0], xs[1])
-            ctx.setTransform(trans)
-            mapNeedRedraw = true
-            break
-
-        // scale
-        case "scale":
-            // [dx, dy, zoom]
-            var xs = parseArgs(args.slice(1, 4))
-            var trans = ctx.getTransform()
-            setTranslate(trans, xs[0], xs[1])
-            setScale(trans, xs[2])
-            ctx.setTransform(trans)
-            mapNeedRedraw = true
-            break
-
-        // reset
-        case "reset":
-            // [dx, dy, zoom, wW, wH]
-            var xs = parseArgs(args.slice(1, 6))
-            var trans = ctx.getTransform()
-            setTranslate(trans, xs[0], xs[1])
-            setScale(trans, xs[2])
-            updateContext(xs[3], xs[4])
+            // move
+            setTranslate(trans, dx, dy)
+            // scale
+            if (typeof zoom !== "undefined")
+                setScale(trans, zoom)
+            // reset
+            if (typeof wW !== "undefined" && typeof wH !== "undefined")
+                updateContext(wW, wH)
             ctx.setTransform(trans)
             mapNeedRedraw = true
             break
