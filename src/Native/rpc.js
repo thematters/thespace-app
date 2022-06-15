@@ -39,7 +39,7 @@ function onMessage(app) {
 }
 
 
-function onClose(ws, app, rpc) {
+function onClose(ws, sendHandler, app, rpc) {
 
     const fastReconnect = (app, rpc) => {
         try {
@@ -58,7 +58,7 @@ function onClose(ws, app, rpc) {
             ws.onopen = undefined
             ws.onclose = undefined
             ws.onmessage = undefined
-            app.ports.rpcSocketOut.subscribe(undefined)
+            app.ports.rpcSocketOut.unsubscribe(sendHandler)
             // init a new socket
             setTimeout(registerSocket, reconnectTimeout, app, rpc)
         } else {
@@ -69,10 +69,11 @@ function onClose(ws, app, rpc) {
 
 function registerSocket(app, rpc) {
     let ws = new WebSocket(rpc)
+    let sendHandler = onSend(ws)
     ws.onopen = onOpen(app)
-    ws.onclose = onClose(ws, app, rpc)
+    ws.onclose = onClose(ws, sendHandler, app, rpc)
     ws.onmessage = onMessage(app)
-    app.ports.rpcSocketOut.subscribe(onSend(ws))
+    app.ports.rpcSocketOut.subscribe(sendHandler)
 }
 
 async function registerWallet(app) {
