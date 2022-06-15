@@ -52,7 +52,6 @@ function onClose(app, rpc) {
         if (!reconnecting && document.visibilityState === "visible") {
             reconnecting = true
             app.ports.rpcSocketControl.send("reconnecting")
-            // setTimeout(fastReconnect, reconnectTimeout, app, rpc)
             setTimeout(registerSocket, reconnectTimeout, app, rpc)
         } else {
             app.ports.rpcSocketControl.send("closed")
