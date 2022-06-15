@@ -1,29 +1,29 @@
 let env = "prod"
 let debug = false
 let wsClosed = false
-let reconnecting = false
+let wsReconnecting = false
 
 const reconnectTimeout = 2000
 
 function onOpen(app) {
     return () => {
         wsClosed = false
-        if (reconnecting) {
+        if (wsReconnecting) {
             app.ports.rpcSocketControl.send("reconnected")
-            reconnecting = false
+            wsReconnecting = false
         } else {
             app.ports.rpcSocketControl.send("opened")
         }
     }
 }
 
-function onSend(socket) {
+function onSend(ws) {
     return msg => {
         if (debug) {
             console.log("Out:", msg)
             if (typeof msg.id !== "undefined") console.time(msg.id)
         }
-        socket.send(JSON.stringify(msg))
+        ws.send(JSON.stringify(msg))
     }
 }
 
@@ -38,20 +38,28 @@ function onMessage(app) {
     }
 }
 
-const fastReconnect = (app, rpc) => {
-    try {
-        registerSocket(app, rpc)
-    } catch (err) {
-        app.ports.rpcSocketControl.send("closed")
-    }
-}
 
-function onClose(app, rpc) {
+function onClose(ws, app, rpc) {
+
+    const fastReconnect = (app, rpc) => {
+        try {
+            registerSocket(app, rpc)
+        } catch (err) {
+            app.ports.rpcSocketControl.send("closed")
+        }
+    }
+
     return () => {
         wsClosed = true
-        if (!reconnecting && document.visibilityState === "visible") {
-            reconnecting = true
+        if (!wsReconnecting && document.visibilityState === "visible") {
+            wsReconnecting = true
             app.ports.rpcSocketControl.send("reconnecting")
+            // remove event handlers from old socket
+            ws.onopen = undefined
+            ws.onclose = undefined
+            ws.onmessage = undefined
+            app.ports.rpcSocketOut.subscribe(undefined)
+            // init a new socket
             setTimeout(registerSocket, reconnectTimeout, app, rpc)
         } else {
             app.ports.rpcSocketControl.send("closed")
@@ -60,9 +68,9 @@ function onClose(app, rpc) {
 }
 
 function registerSocket(app, rpc) {
-    var ws = new WebSocket(rpc)
+    let ws = new WebSocket(rpc)
     ws.onopen = onOpen(app)
-    ws.onclose = onClose(app, rpc)
+    ws.onclose = onClose(ws, app, rpc)
     ws.onmessage = onMessage(app)
     app.ports.rpcSocketOut.subscribe(onSend(ws))
 }
