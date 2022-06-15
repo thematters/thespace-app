@@ -18,7 +18,7 @@ env:
 
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true || github.event.push == true
+    if: (github.event.pull_request.merged == true) || (github.event_name == 'push')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
