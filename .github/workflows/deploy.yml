@@ -6,6 +6,8 @@ on:
       - main
       - develop
     types: [closed]
+    paths:
+      - 'current/**'
   push:
     branches:
       - develop
