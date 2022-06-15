@@ -228,6 +228,8 @@ type PixelOpStep
 
 type Notification
     = ErrorNotif String
+    | InfoNotif String
+    | WarningNotif String
     | LoadingNotif
 
 

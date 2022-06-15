@@ -1,36 +1,71 @@
 let env = "prod"
 let debug = false
 let wsClosed = false
+let reconnecting = false
 
-function registerSocket(app, ws) {
-    const debugOnSend = msg => {
-        console.log("Out:", msg)
-        if (typeof msg.id !== "undefined")
-            console.time(msg.id)
-        ws.send(JSON.stringify(msg))
+const reconnectTimeout = 2000
+
+function onOpen(app) {
+    return () => {
+        wsClosed = false
+        if (reconnecting) {
+            app.ports.rpcSocketControl.send("reconnected")
+            reconnecting = false
+        } else {
+            app.ports.rpcSocketControl.send("opened")
+        }
     }
+}
 
-    const debugOnMessage = evt => {
+function onSend(socket) {
+    return msg => {
+        if (debug) {
+            console.log("Out:", msg)
+            if (typeof msg.id !== "undefined") console.time(msg.id)
+        }
+        socket.send(JSON.stringify(msg))
+    }
+}
+
+function onMessage(app) {
+    return evt => {
         const msg = JSON.parse(evt.data)
-        console.log("In:", msg)
-        if (typeof msg.id !== "undefined")
-            console.timeEnd(msg.id)
+        if (debug) {
+            console.log("In:", msg)
+            if (typeof msg.id !== "undefined") console.timeEnd(msg.id)
+        }
         app.ports.rpcSocketIn.send(msg)
     }
+}
 
-    if (debug) {
-        ws.onmessage = debugOnMessage
-        app.ports.rpcSocketOut.subscribe(debugOnSend)
-    } else {
-        ws.onmessage = evt => app.ports.rpcSocketIn.send(JSON.parse(evt.data))
-        app.ports.rpcSocketOut.subscribe(msg => ws.send(JSON.stringify(msg)))
+const fastReconnect = (app, rpc) => {
+    try {
+        registerSocket(app, rpc)
+    } catch (err) {
+        app.ports.rpcSocketControl.send("closed")
     }
+}
 
-    ws.onopen = () => app.ports.rpcSocketControl.send(true)
-    ws.onclose = () => {
+function onClose(app, rpc) {
+    return () => {
         wsClosed = true
-        app.ports.rpcSocketControl.send(false)
+        if (!reconnecting && document.visibilityState === "visible") {
+            reconnecting = true
+            app.ports.rpcSocketControl.send("reconnecting")
+            // setTimeout(fastReconnect, reconnectTimeout, app, rpc)
+            setTimeout(registerSocket, reconnectTimeout, app, rpc)
+        } else {
+            app.ports.rpcSocketControl.send("closed")
+        }
     }
+}
+
+function registerSocket(app, rpc) {
+    var ws = new WebSocket(rpc)
+    ws.onopen = onOpen(app)
+    ws.onclose = onClose(app, rpc)
+    ws.onmessage = onMessage(app)
+    app.ports.rpcSocketOut.subscribe(onSend(ws))
 }
 
 async function registerWallet(app) {
@@ -40,7 +75,7 @@ async function registerWallet(app) {
     }
 
     const noMetaMask = () => {
-        return typeof window.ethereum === "undefined"
+        return typeof window.ethereum === "undefined" || !ethereum.isMetaMask
     }
 
     const metaMaskLocked = async () => {
@@ -92,6 +127,12 @@ async function registerWallet(app) {
     const walletHandler = async (msg) => {
         if (debug) console.log("Wallet Out:", msg)
 
+        // refresh app
+        if (msg.method === "reinitApp") {
+            window.location.reload()
+            return
+        }
+
         // check if MetaMask is installed?
         if (noMetaMask()) {
             send({ type: "no-wallet" })
@@ -105,6 +146,7 @@ async function registerWallet(app) {
         }
 
         switch (msg.method) {
+
             case "wallet_addEthereumChain":
                 try {
                     // try switch first
@@ -113,7 +155,7 @@ async function registerWallet(app) {
                         params: [{ chainId: msg.params[0].chainId }],
                     })
                 } catch (switchErr) {
-                    if (switchErr.code === 4902 || switchErr.code ===  -32603)
+                    if (switchErr.code === 4902 || switchErr.code === -32603)
                         try {
                             await ethereum.request(msg)
                         } catch (addErr) {
@@ -189,8 +231,9 @@ async function registerWallet(app) {
 }
 
 export function registerRpc(app) {
+
     addEventListener('visibilitychange', event => {
-        if (wsClosed)
+        if (wsClosed && document.visibilityState === "visible")
             window.location.reload()
     })
 
@@ -198,7 +241,7 @@ export function registerRpc(app) {
         (data) => {
             env = data.env
             debug = data.debug
-            registerSocket(app, new WebSocket(data.rpc))
+            registerSocket(app, data.rpc)
             registerWallet(app)
         }
     )

@@ -89,3 +89,6 @@ type Msg
     | MapSnapshotInited
     | RpcMessageRecieved Value
     | RpcSocketClosed
+    | RpcSocketReconnecting
+    | RpcSocketReconnected
+    | ReInitApp
