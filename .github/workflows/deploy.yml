@@ -8,7 +8,7 @@ on:
     types: [closed]
   push:
     branches:
-      - feat/ci-on-push
+      - develop
     paths:
       - 'current/stag/**'
 
