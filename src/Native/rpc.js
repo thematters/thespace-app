@@ -1,16 +1,14 @@
 let env = "prod"
 let debug = false
 let wsClosed = false
-let wsReconnecting = false
 
 const reconnectTimeout = 2000
 
 function onOpen(app) {
     return () => {
-        wsClosed = false
-        if (wsReconnecting) {
+        if (wsClosed) {
             app.ports.rpcSocketControl.send("reconnected")
-            wsReconnecting = false
+            wsClosed = false
         } else {
             app.ports.rpcSocketControl.send("opened")
         }
@@ -39,50 +37,52 @@ function onMessage(app) {
 }
 
 
-function onClose(ws, sendHandler, app, rpc) {
+function onClose(app, rpc, oldSocket, oldSendHandler) {
 
-    const fastReconnect = (app, rpc) => {
+    const attemptReconnect = (app, rpc) => {
         try {
-            registerSocket(app, rpc)
+            initSocket(app, rpc)
         } catch (err) {
             app.ports.rpcSocketControl.send("closed")
         }
     }
 
     return () => {
-        wsClosed = true
-        if (!wsReconnecting && document.visibilityState === "visible") {
-            wsReconnecting = true
+        if (!wsClosed && document.visibilityState === "visible") {
+            wsClosed = true
             app.ports.rpcSocketControl.send("reconnecting")
-            // remove event handlers from old socket
-            ws.onopen = undefined
-            ws.onclose = undefined
-            ws.onmessage = undefined
-            app.ports.rpcSocketOut.unsubscribe(sendHandler)
-            // init a new socket
-            setTimeout(registerSocket, reconnectTimeout, app, rpc)
+            deinitSocket(app, oldSocket, oldSendHandler)
+            setTimeout(attemptReconnect, reconnectTimeout, app, rpc)
         } else {
+            wsClosed = true
             app.ports.rpcSocketControl.send("closed")
         }
     }
 }
 
-function registerSocket(app, rpc) {
+function initSocket(app, rpc) {
     let ws = new WebSocket(rpc)
     let sendHandler = onSend(ws)
     ws.onopen = onOpen(app)
-    ws.onclose = onClose(ws, sendHandler, app, rpc)
+    ws.onclose = onClose(app, rpc, ws, sendHandler)
     ws.onmessage = onMessage(app)
     app.ports.rpcSocketOut.subscribe(sendHandler)
 }
 
-async function registerWallet(app) {
+function deinitSocket(app, ws, sendHandler) {
+    ws.onopen = undefined
+    ws.onclose = undefined
+    ws.onmessage = undefined
+    app.ports.rpcSocketOut.unsubscribe(sendHandler)
+}
+
+async function initWallet(app) {
     const send = (msg) => {
         if (debug) console.log("Wallet In:", msg)
         app.ports.walletIn.send(msg)
     }
 
-    const noMetaMask = () => {
+    const metaMaskNotInstalled = () => {
         return typeof window.ethereum === "undefined" || !ethereum.isMetaMask
     }
 
@@ -90,6 +90,7 @@ async function registerWallet(app) {
         if (typeof window.ethereum._metamask !== "undefined") {
             return !await ethereum._metamask.isUnlocked()
         } else {
+            // bypass check if `window.ethereum._metamask` not injected
             return false
         }
     }
@@ -142,7 +143,7 @@ async function registerWallet(app) {
         }
 
         // check if MetaMask is installed?
-        if (noMetaMask()) {
+        if (metaMaskNotInstalled()) {
             send({ type: "no-wallet" })
             return
         }
@@ -230,7 +231,7 @@ async function registerWallet(app) {
         }
     }
 
-    if (!noMetaMask()) {
+    if (!metaMaskNotInstalled()) {
         // register MetaMask account/chain change events
         ethereum.on('accountsChanged', async () => send(await getAcct()))
         ethereum.on('chainChanged', async () => send(await getAcct()))
@@ -249,8 +250,8 @@ export function registerRpc(app) {
         (data) => {
             env = data.env
             debug = data.debug
-            registerSocket(app, data.rpc)
-            registerWallet(app)
+            initSocket(app, data.rpc)
+            initWallet(app)
         }
     )
 }
