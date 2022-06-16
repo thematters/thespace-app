@@ -36,7 +36,6 @@ function onMessage(app) {
     }
 }
 
-
 function onClose(app, rpc, oldSocket, oldSendHandler) {
 
     const attemptReconnect = (app, rpc) => {
