@@ -1,14 +1,14 @@
 port module Canvas exposing
     ( canvasSubs
-    , centerToCellTransfrom
+    , centerToCellTransform
     , endPlayback
     , forward
+    , freeMoveTransform
     , initLatestColors
     , initMapSnapshot
     , initPlayback
-    , move
-    , moveClampToEdge
-    , moveTransfrom
+    , moveClampToEdgeTransform
+    , moveTransform
     , playbackChangeSpeed
     , playbackSkipToEnd
     , playbackSkipToStart
@@ -16,9 +16,9 @@ port module Canvas exposing
     , reset
     , resetTransform
     , rewind
-    , scale
     , startPlayback
     , startPlaybackAgain
+    , transform
     , update
     , zoomTransform
     )
@@ -82,8 +82,8 @@ resetTransform winSize =
     { dx = center mW minZoom wW, dy = center mH minZoom wH, zoom = minZoom }
 
 
-moveClampToEdge : ZoomLevel -> Size -> ( Float, Float ) -> ( Float, Float )
-moveClampToEdge zoom winSize trans =
+moveClampToEdgeTransform : ZoomLevel -> Size -> ( Float, Float ) -> ( Float, Float )
+moveClampToEdgeTransform zoom winSize trans =
     let
         ( wW, wH ) =
             winSize |> sizeToFloatSize
@@ -128,11 +128,21 @@ moveClamp zoom winSize trans =
     )
 
 
-moveTransfrom : Delta -> Delta -> Size -> Transform -> Transform
-moveTransfrom dx dy winSize cvs =
+moveTransform : Delta -> Delta -> Size -> Transform -> Transform
+moveTransform dx dy winSize cvs =
     let
         ( dx1, dy1 ) =
             ( cvs.dx + dx, cvs.dy + dy ) |> moveClamp cvs.zoom winSize
+    in
+    { dx = dx1, dy = dy1, zoom = cvs.zoom }
+
+
+freeMoveTransform : Delta -> Delta -> Transform -> Transform
+freeMoveTransform dx dy cvs =
+    -- move transfrom but no clamping to 1/2 window width/height
+    let
+        ( dx1, dy1 ) =
+            ( cvs.dx + dx, cvs.dy + dy )
     in
     { dx = dx1, dy = dy1, zoom = cvs.zoom }
 
@@ -149,8 +159,8 @@ zoomTransform winSize cell zoom canvas =
     { dx = dx, dy = dy, zoom = zoom }
 
 
-centerToCellTransfrom : Size -> ZoomLevel -> Index -> Transform
-centerToCellTransfrom winSize zoom_ index =
+centerToCellTransform : Size -> ZoomLevel -> Index -> Transform
+centerToCellTransform winSize zoom_ index =
     let
         cell =
             indexToCell index
@@ -271,26 +281,20 @@ update cevts =
         "update," ++ idxCCStr |> send
 
 
-moveCommand : Transform -> String
-moveCommand trans =
-    String.fromFloat trans.dx ++ "," ++ String.fromFloat trans.dy
+transCommand : Transform -> String
+transCommand trans =
+    "trans,"
+        ++ String.fromFloat trans.dx
+        ++ ","
+        ++ String.fromFloat trans.dy
+        ++ ","
+        ++ String.fromFloat trans.zoom
 
 
-move : Transform -> Cmd msg
-move trans =
-    -- trans,<dx>,<dy>
-    "move," ++ moveCommand trans |> send
-
-
-scaleCommand : Transform -> String
-scaleCommand trans =
-    "scale," ++ moveCommand trans ++ "," ++ String.fromFloat trans.zoom
-
-
-scale : Transform -> Cmd msg
-scale trans =
-    -- scale,<dx>,<dy>,<zoom>
-    scaleCommand trans |> send
+transform : Transform -> Cmd msg
+transform trans =
+    -- trans,<dx>,<dy>,<zoom>
+    transCommand trans |> send
 
 
 resetCommand : Transform -> Size -> String
@@ -299,10 +303,9 @@ resetCommand trans size =
         ( w, h ) =
             size
     in
-    "reset,"
-        ++ moveCommand trans
-        ++ ","
-        ++ String.fromFloat trans.zoom
+    transCommand trans
+        --++ ","
+        --++ String.fromFloat trans.zoom
         ++ ","
         ++ String.fromInt w
         ++ ","

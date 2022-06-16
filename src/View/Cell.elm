@@ -126,7 +126,7 @@ positionStyle winSize zoom pos =
             px modalEdge
     in
     case
-        ( windowW - pos.x >= modalW, windowH - pos.y >= modalH )
+        ( windowW - pos.x >= pos.x, windowH - pos.y >= pos.y )
     of
         ( True, True ) ->
             [ left (px (pos.x + zoom))
@@ -471,7 +471,9 @@ polyscanLink href_ e =
         , Html.Styled.Attributes.target "_blank"
         ]
         [ div
-            [ css [ displayFlex, alignItems center, property "gap" "2px" ] ]
+            [ css [ displayFlex, alignItems center, property "gap" "2px" ]
+            , title "View on PolygonScan"
+            ]
             [ e, Icons.polygon ]
         ]
 

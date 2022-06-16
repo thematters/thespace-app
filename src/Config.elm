@@ -120,6 +120,11 @@ cellModalWidth =
     446
 
 
+cellModalEdge : Float
+cellModalEdge =
+    20
+
+
 cellModalHeight : Float
 cellModalHeight =
     446
@@ -360,6 +365,11 @@ tokenSign =
 aboutLink : String
 aboutLink =
     "https://thespace.game/"
+
+
+discordLink : String
+discordLink =
+    "https://discord.com/invite/QphpD4zmfY"
 
 
 installMetaMaskLink : String

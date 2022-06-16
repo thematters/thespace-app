@@ -35,6 +35,7 @@ initModel =
 
     -- cellPos init to (-1,-1) to not display anything in minimap after init
     , cellPos = { x = -1, y = -1 }
+    , pinch = Nothing
     , dragging = NotDragging
     , cellModalMode = HideTaxUbi
     , selectCell = NoCell
@@ -59,7 +60,7 @@ initModel =
         }
     , acts = []
     , assets = A.AssetsNotLoaded
-    , notif = Just LoadingNotif
+    , notif = Just SplashNotif
     , colorHistory = Array.empty
     , queue = Dict.empty
     }
@@ -83,6 +84,9 @@ type alias Model =
 
     -- Current pointing transformed canvas pixel position
     , cellPos : Cell
+
+    -- Current pinch distance
+    , pinch : Maybe Float
 
     -- Current dragging info
     , dragging : Dragging
@@ -223,8 +227,9 @@ type PixelOpStep
 
 
 type Notification
-    = ErrorNotif String
-    | LoadingNotif
+    = SplashNotif
+    | ConnectionLostNotif
+    | ReconnectingNotif
 
 
 initWatchIds : WatchIds

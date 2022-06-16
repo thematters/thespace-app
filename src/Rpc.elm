@@ -18,6 +18,7 @@ port module Rpc exposing
     , getTokenInfo
     , getTreasuryShare
     , openSocket
+    , reinitApp
     , requestAccount
     , rpcSubs
     , setPixel
@@ -102,7 +103,7 @@ port rpcSocketOut : Value -> Cmd msg
 port rpcSocketIn : (Value -> msg) -> Sub msg
 
 
-port rpcSocketControl : (Bool -> msg) -> Sub msg
+port rpcSocketControl : (String -> msg) -> Sub msg
 
 
 
@@ -778,6 +779,11 @@ getOwnPixels bk_ owner limit_ offset_ =
 -- Wallet APIs
 
 
+reinitApp : Cmd msg
+reinitApp =
+    E.object [ ( "method", E.string "reinitApp" ) ] |> walletOut
+
+
 setPixel : Address -> Int -> Price -> Price -> Int -> Cmd msg
 setPixel address index bidPrice newPrice newColor =
     let
@@ -909,13 +915,23 @@ rpcSubs =
     ]
 
 
-handleRpcSocketControlMessage : Bool -> Msg
-handleRpcSocketControlMessage io =
-    if io then
-        RpcSocketOpened
+handleRpcSocketControlMessage : String -> Msg
+handleRpcSocketControlMessage s =
+    case s of
+        "opened" ->
+            RpcSocketOpened
 
-    else
-        RpcSocketClosed
+        "closed" ->
+            RpcSocketClosed
+
+        "reconnecting" ->
+            RpcSocketReconnecting
+
+        "reconnected" ->
+            RpcSocketReconnected
+
+        _ ->
+            NoOp
 
 
 handleWalletMessage : Value -> Msg

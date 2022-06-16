@@ -121,11 +121,31 @@ update msg model =
             handleRpcMessageRecieved model message
 
         RpcSocketClosed ->
-            ( { model
-                | notif = Just <| ErrorNotif "Connection lost, please refresh."
-              }
-            , Cmd.none
+            let
+                notif =
+                    ConnectionLostNotif
+            in
+            ( { model | notif = Just notif }, Cmd.none )
+
+        RpcSocketReconnecting ->
+            let
+                notif =
+                    ReconnectingNotif
+            in
+            ( { model | notif = Just notif }, Cmd.none )
+
+        RpcSocketReconnected ->
+            ( { model | notif = Nothing }
+            , case model.blockNumber of
+                Nothing ->
+                    Cmd.none
+
+                Just bk ->
+                    Rpc.getLatestColorEvents bk
             )
+
+        ReInitApp ->
+            ( model, Rpc.reinitApp )
 
         -- Wallet
         ConnectMetaMask ->
@@ -159,9 +179,6 @@ update msg model =
                 _ ->
                     Cmd.none
             )
-
-        WalletError errMsg ->
-            ( { model | notif = Just <| ErrorNotif errMsg }, Cmd.none )
 
         RequestApproveAllBalance ->
             ( model
@@ -314,7 +331,7 @@ update msg model =
                 m =
                     model |> resetModel
             in
-            ( m, C.scale m.canvas )
+            ( m, C.transform m.canvas )
 
         MapMouseDown xy ->
             ( { model
@@ -325,16 +342,65 @@ update msg model =
             , Cmd.none
             )
 
+        MapTouchDown xy ->
+            ( if model.pinch == Nothing then
+                { model
+                    | dragging = MapDragging xy
+                    , pagePos = xy
+                    , cellPos = posToCell model.canvas xy
+                }
+
+              else
+                model
+            , Cmd.none
+            )
+
+        MapPinchDown dis ->
+            ( { model | pinch = Just dis }, Cmd.none )
+
+        MapPinchChange dis ->
+            let
+                threshhold =
+                    5
+
+                zoom d1 d2 =
+                    if d2 - d1 > threshhold then
+                        Just Out
+
+                    else if d1 - d2 > threshhold then
+                        Just In
+
+                    else
+                        Nothing
+
+                m =
+                    { model | pinch = Just dis }
+            in
+            case zoom dis <| Maybe.withDefault 0 <| model.pinch of
+                Just direction ->
+                    let
+                        cc =
+                            centerCell model.canvas model.winSize
+                    in
+                    handleZoom m direction cc
+
+                Nothing ->
+                    ( m, Cmd.none )
+
         MiniMapMouseDown xy ->
             ( { model | dragging = MiniMapDragging xy }, Cmd.none )
 
         MouseUp xy ->
-            case model.dragging of
+            let
+                m =
+                    { model | pinch = Nothing }
+            in
+            case m.dragging of
                 NotDragging ->
-                    handleDraggingEnd model
+                    handleDraggingEnd m
 
                 MiniMapDragging _ ->
-                    handleDraggingEnd model
+                    handleDraggingEnd m
 
                 MapDragging dgpos_ ->
                     let
@@ -354,11 +420,30 @@ update msg model =
                         stillAsClick dgpos =
                             not <| dragEnough dgpos
                     in
-                    if cellInMap model.cellPos && stillAsClick dgpos_ then
-                        handleSelectCell model model.cellPos
+                    if cellInMap m.cellPos && stillAsClick dgpos_ then
+                        handleSelectCell m m.cellPos
 
                     else
                         handleDraggingEnd model
+
+        TouchMove xy ->
+            if model.pinch == Nothing then
+                let
+                    m =
+                        { model
+                            | pagePos = xy
+                            , cellPos = posToCell model.canvas xy
+                        }
+                in
+                case model.dragging of
+                    MapDragging _ ->
+                        handleMapDragging m <| positionDelta xy model.pagePos
+
+                    _ ->
+                        ( m, Cmd.none )
+
+            else
+                ( model, Cmd.none )
 
         MouseMove xy ->
             let
@@ -386,7 +471,7 @@ update msg model =
             let
                 cvs =
                     if centerToCell then
-                        C.centerToCellTransfrom
+                        C.centerToCellTransform
                             model.winSize
                             model.canvas.zoom
                             idx
@@ -399,7 +484,7 @@ update msg model =
                 , cellPos = indexToCell idx
                 , selectCell = LoadingCell idx
               }
-            , Cmd.batch [ C.scale cvs, Rpc.getPixel idx ]
+            , Cmd.batch [ C.transform cvs, Rpc.getPixel idx ]
             )
 
         TickColor cid ->
@@ -876,12 +961,12 @@ handleZoom m direction cell =
         canvas =
             m.canvas |> C.zoomTransform m.winSize cell zoom
     in
-    ( { m | canvas = canvas }, C.scale canvas )
+    ( { m | canvas = canvas }, C.transform canvas )
 
 
 handleDraggingEnd : Model -> ( Model, Cmd msg )
 handleDraggingEnd model =
-    ( model |> removeMouseFlags, C.move model.canvas )
+    ( model |> removeMouseFlags, Cmd.none )
 
 
 handleSelectCell : Model -> Cell -> ( Model, Cmd msg )
@@ -893,14 +978,53 @@ handleSelectCell model cell =
         zoom =
             m.canvas.zoom |> clamp clickZoom maxZoom
 
-        canvas =
-            m.canvas |> C.zoomTransform m.winSize m.cellPos zoom
+        cvs =
+            let
+                cvsScale =
+                    m.canvas |> C.zoomTransform m.winSize m.cellPos zoom
+
+                pos =
+                    cellToPos cvsScale cell
+
+                ( wW, wH ) =
+                    model.winSize |> sizeToFloatSize
+
+                ( dx, dxRight ) =
+                    ( pos.x, wW - pos.x )
+
+                ( dy, dyBottom ) =
+                    ( pos.y, wH - pos.y )
+
+                ( cW, cH, edge ) =
+                    ( cellModalWidth, cellModalEdge, cellModalEdge )
+
+                dxAdjust =
+                    if max dx dxRight >= cW then
+                        0
+
+                    else if dx > dxRight then
+                        cW - dx
+
+                    else
+                        dxRight - cW - edge
+
+                dyAdjust =
+                    if max dy dyBottom >= cH then
+                        0
+
+                    else if dy > dyBottom then
+                        cH - dy
+
+                    else
+                        dyBottom - cH - edge
+            in
+            cvsScale |> C.freeMoveTransform dxAdjust dyAdjust
 
         index =
             cellToIndex cell
     in
-    ( { m | canvas = canvas, selectCell = LoadingCell index }
-    , Cmd.batch [ C.scale canvas, Rpc.getPixel index ]
+    ( { m | canvas = cvs, selectCell = LoadingCell index }
+    , Cmd.batch [ C.transform cvs, Rpc.getPixel index ]
     )
 
 
@@ -911,9 +1035,9 @@ handleMapDragging model { dx, dy } =
             model |> removeSelectCell
 
         canvas =
-            m.canvas |> C.moveTransfrom dx dy m.winSize
+            m.canvas |> C.moveTransform dx dy m.winSize
     in
-    ( { m | canvas = canvas }, C.move canvas )
+    ( { m | canvas = canvas }, C.transform canvas )
 
 
 handleMiniMapDragging : Model -> PositionDelta -> ( Model, Cmd msg )
@@ -933,12 +1057,12 @@ handleMiniMapDragging m { dx, dy } =
 
         ( mmdx, mmdy ) =
             ( cvs.dx + dx_, cvs.dy + dy_ )
-                |> C.moveClampToEdge cvs.zoom m.winSize
+                |> C.moveClampToEdgeTransform cvs.zoom m.winSize
 
         canvas =
             { cvs | dx = mmdx, dy = mmdy, zoom = cvs.zoom }
     in
-    ( { m | canvas = canvas }, C.move canvas )
+    ( { m | canvas = canvas }, C.transform canvas )
 
 
 requestOwnPixelsFirstPageOrNothing : Model -> Maybe Address -> ( Model, Cmd msg )
@@ -979,7 +1103,7 @@ handleRpcMessageRecieved model msg =
                                 resetTrans
 
                             else
-                                C.centerToCellTransfrom
+                                C.centerToCellTransform
                                     model.winSize
                                     model.canvas.zoom
                                     index
@@ -1872,16 +1996,16 @@ subscriptions model =
 
 browserSubs : List (Sub Msg)
 browserSubs =
-    [ E.onMouseMove mouseEventDecoder
-    , E.onMouseUp mouseEventDecoder
+    [ E.onMouseMove <| mouseEventDecoder MouseMove
+    , E.onMouseUp <| mouseEventDecoder MouseUp
     , E.onResize (\w h -> WindowResize ( w, h ))
     ]
 
 
-mouseEventDecoder : Decoder Msg
-mouseEventDecoder =
+mouseEventDecoder : (Position -> Msg) -> Decoder Msg
+mouseEventDecoder msg =
     D.map2
-        (\x y -> MouseUp <| position x y)
+        (\x y -> msg <| position x y)
         (D.field "pageX" D.float)
         (D.field "pageY" D.float)
 

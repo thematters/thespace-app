@@ -39,9 +39,13 @@ type Msg
       -- Map / MiniMap Ops
     | WindowResize Size
     | MapMouseDown Position
+    | MapTouchDown Position
+    | MapPinchDown Float
+    | MapPinchChange Float
     | MiniMapMouseDown Position
     | MouseUp Position
     | MouseMove Position
+    | TouchMove Position
     | ZoomIn
     | ZoomOut
     | ZoomInCenter
@@ -79,9 +83,11 @@ type Msg
     | TxConfirmed Index
     | TxUnderPriced Index
     | TxRejected Index
-    | WalletError String
       -- Rpc
     | RpcSocketOpened
     | MapSnapshotInited
     | RpcMessageRecieved Value
     | RpcSocketClosed
+    | RpcSocketReconnecting
+    | RpcSocketReconnected
+    | ReInitApp
