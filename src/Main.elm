@@ -123,14 +123,14 @@ update msg model =
         RpcSocketClosed ->
             let
                 notif =
-                    ErrorNotif "Connection lost, click here to reconnect."
+                    ConnectionLostNotif
             in
             ( { model | notif = Just notif }, Cmd.none )
 
         RpcSocketReconnecting ->
             let
                 notif =
-                    WarningNotif "Reconnecting..."
+                    ReconnectingNotif
             in
             ( { model | notif = Just notif }, Cmd.none )
 
@@ -179,9 +179,6 @@ update msg model =
                 _ ->
                     Cmd.none
             )
-
-        WalletError errMsg ->
-            ( { model | notif = Just <| ErrorNotif errMsg }, Cmd.none )
 
         RequestApproveAllBalance ->
             ( model

@@ -83,7 +83,6 @@ type Msg
     | TxConfirmed Index
     | TxUnderPriced Index
     | TxRejected Index
-    | WalletError String
       -- Rpc
     | RpcSocketOpened
     | MapSnapshotInited
