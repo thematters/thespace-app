@@ -2,7 +2,7 @@ let env = "prod"
 let debug = false
 let wsClosed = false
 
-const reconnectTimeout = 2000
+const reconnectDelay = 2000
 
 function onOpen(app) {
     return () => {
@@ -51,7 +51,7 @@ function onClose(app, rpc, oldSocket, oldSendHandler) {
             wsClosed = true
             app.ports.rpcSocketControl.send("reconnecting")
             deinitSocket(app, oldSocket, oldSendHandler)
-            setTimeout(attemptReconnect, reconnectTimeout, app, rpc)
+            setTimeout(attemptReconnect, reconnectDelay, app, rpc)
         } else {
             wsClosed = true
             app.ports.rpcSocketControl.send("closed")
