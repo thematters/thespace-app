@@ -3,13 +3,15 @@ module Msg exposing (Msg(..))
 import Config.Env.Util exposing (RpcProvider)
 import Data
     exposing
-        ( ColorId
+        ( ColorChangeDeltaData
+        , ColorId
         , Index
         , Position
         , Price
         , Size
         , WalletInfo
         )
+import Http
 import InfiniteList
 import Json.Encode exposing (Value)
 import Model
@@ -91,3 +93,4 @@ type Msg
     | RpcSocketReconnecting
     | RpcSocketReconnected
     | ReInitApp
+    | DeltaRecieved (Result Http.Error ColorChangeDeltaData)

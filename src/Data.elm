@@ -19,9 +19,11 @@ import Eth.Decode as ED
 import Eth.Defaults exposing (zeroAddress)
 import Eth.Types exposing (Address)
 import Eth.Units exposing (EthUnit(..))
-import Eth.Utils exposing (addressToChecksumString)
+import Eth.Utils exposing (add0x, addressToChecksumString)
+import Hex
 import Json.Decode as D
 import Regex
+import Time exposing (Posix)
 
 
 
@@ -222,9 +224,26 @@ type alias WalletDetail =
 
 
 type alias ColorChange =
-    { idx : Int
-    , old : String
-    , new : String
+    { index : Index
+    , color : ColorId
+    }
+
+
+type alias ColorChangeDeltaBlock =
+    { blockNumber : BlockNumber
+    , changes : List ColorChange
+    , time : Posix
+    }
+
+
+type alias ColorChangeDelta =
+    List ColorChangeDeltaBlock
+
+
+type alias ColorChangeDeltaData =
+    { delta : List ColorChangeDeltaBlock
+    , prev : Maybe Cid
+    , snapshot : Cid
     }
 
 
@@ -261,12 +280,23 @@ type RpcResult
     | RpcPixel Pixel
     | RpcOwnPixels OwnPixelsResultPage
     | RpcTokenInfo TokenInfo
+    | RpcPlaybackCid (List Cid)
     | RpcError RpcErrorData
 
 
+type alias Cid =
+    String
+
+
 type alias Snapshot =
-    { blockNumber : Int
-    , cid : String
+    { blockNumber : BlockNumber
+    , cid : Cid
+    }
+
+
+type alias PlaybackDelta =
+    { blockNumber : BlockNumber
+    , cid : Cid
     }
 
 
@@ -472,6 +502,11 @@ fakePixel i =
 
 
 -- Eth
+
+
+intToHex : Int -> String
+intToHex i =
+    i |> Hex.toString |> String.padLeft 64 '0' |> add0x
 
 
 bigIntToInt : BigInt -> Maybe Int

@@ -1,18 +1,12 @@
 module Model exposing (..)
 
 import Array exposing (Array)
-import Config
-    exposing
-        ( minPrice
-        , minZoom
-        , miniMapHeight
-        , sidebarWidth
-        )
+import Config exposing (minPrice, minZoom, miniMapHeight, sidebarWidth)
 import Data exposing (..)
 import Dict exposing (Dict)
 import InfiniteList
 import Model.Assets as A
-import Model.Playback exposing (PlaybackConfig)
+import Model.Playback as PB
 
 
 type alias Flags =
@@ -25,7 +19,7 @@ type alias Flags =
 
 initModel : Model
 initModel =
-    { mode = RealtimeLoading
+    { mode = Loading
 
     --winSize init to (1, 1) avoiding NaN/Infinity bullshit
     , winSize = ( 1, 1 )
@@ -61,8 +55,8 @@ initModel =
     , acts = []
     , assets = A.AssetsNotLoaded
     , notif = Just SplashNotif
-    , colorHistory = Array.empty
     , queue = Dict.empty
+    , playback = PB.init
     }
 
 
@@ -106,9 +100,6 @@ type alias Model =
     -- Init Map
     , mapStatus : MapStatus
 
-    -- Playback Color History
-    , colorHistory : Array ColorChange
-
     -- Current Selected Cell
     , selectCell : SelectCell
 
@@ -135,14 +126,16 @@ type alias Model =
 
     -- Notification
     , notif : Maybe Notification
+
+    -- Playback
+    , playback : PB.Playback
     }
 
 
 type AppMode
-    = RealtimeLoading
+    = Loading
     | Realtime
-    | PlaybackLoading
-    | Playback PlaybackConfig
+    | Playback PB.Playback
 
 
 type MiniMapMode

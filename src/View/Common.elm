@@ -808,14 +808,11 @@ globalStyle appmode =
     let
         bgcolor =
             case appmode of
-                RealtimeLoading ->
+                Loading ->
                     bggray
 
                 Realtime ->
                     bggray
-
-                PlaybackLoading ->
-                    secondary
 
                 Playback _ ->
                     secondary

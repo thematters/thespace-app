@@ -44,14 +44,11 @@ view m =
 
         views =
             case m.mode of
-                RealtimeLoading ->
+                Loading ->
                     realtimeViews
 
                 Realtime ->
                     realtimeViews
-
-                PlaybackLoading ->
-                    playbackViews
 
                 Playback _ ->
                     playbackViews

@@ -6,21 +6,21 @@
 
 
 module Contract.Snapper exposing
-    ( LatestSnapshotInfo
-    , latestSnapshotInfo
-    , latestSnapshotInfoDecoder
-    , trimCid
+    ( deltaLogsDecoder
+    , latestSnapshot
+    , snapshotDecoder
     )
 
 import BigInt exposing (BigInt)
+import Data exposing (Cid, Snapshot, unsafeBigIntToInt)
 import Eth.Abi.Decode as AD
 import Eth.Abi.Encode as AE
 import Eth.Types exposing (Address, Call)
-import Json.Decode exposing (Decoder)
+import Json.Decode as D exposing (Decoder)
 import Regex
 
 
-type alias LatestSnapshotInfo =
+type alias LatestSnapshotUgly =
     { shift : BigInt
     , latestSnapshotBlock : BigInt
     , shift2 : BigInt
@@ -28,8 +28,8 @@ type alias LatestSnapshotInfo =
     }
 
 
-latestSnapshotInfo : Address -> Call LatestSnapshotInfo
-latestSnapshotInfo contractAddress =
+latestSnapshot : Address -> Call LatestSnapshotUgly
+latestSnapshot contractAddress =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
@@ -37,13 +37,13 @@ latestSnapshotInfo contractAddress =
     , value = Nothing
     , data = Just <| AE.functionCall "69b18e3d" []
     , nonce = Nothing
-    , decoder = latestSnapshotInfoDecoder
+    , decoder = latestSnapshotDecoder_
     }
 
 
-latestSnapshotInfoDecoder : Decoder LatestSnapshotInfo
-latestSnapshotInfoDecoder =
-    AD.abiDecode LatestSnapshotInfo
+latestSnapshotDecoder_ : Decoder LatestSnapshotUgly
+latestSnapshotDecoder_ =
+    AD.abiDecode LatestSnapshotUgly
         |> AD.andMap AD.uint
         |> AD.andMap AD.uint
         |> AD.andMap AD.uint
@@ -51,14 +51,36 @@ latestSnapshotInfoDecoder =
         |> AD.toElmDecoder
 
 
+snapshotDecoder : Decoder Snapshot
+snapshotDecoder =
+    D.map toSnapshot latestSnapshotDecoder_
+
+
+toSnapshot : LatestSnapshotUgly -> Snapshot
+toSnapshot snapshotInfo =
+    { blockNumber = snapshotInfo.latestSnapshotBlock |> unsafeBigIntToInt
+    , cid = snapshotInfo.latestSnapshotCid |> trimCid
+    }
+
+
 trimCid : String -> String
 trimCid s =
-    -- FIXME: this is fucking ugly...
-    -- due to Eth doesn't provide Tape type...
-    -- we need a better way...
+    -- FIXME: though safe, this is too ugly to be in production code
+    -- Eth doesn't provide Tape constructor currently,
+    -- we need a better way than this...
     s
         |> String.replace "." ""
         |> String.replace "@" ""
         |> Regex.replace
             (Maybe.withDefault Regex.never (Regex.fromString "\\0"))
             (\_ -> "")
+
+
+playbackDeltaDecoder : Decoder Cid
+playbackDeltaDecoder =
+    D.at [ "data" ] (AD.string |> AD.toElmDecoder)
+
+
+deltaLogsDecoder : Decoder (List Cid)
+deltaLogsDecoder =
+    D.list playbackDeltaDecoder

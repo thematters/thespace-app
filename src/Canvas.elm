@@ -51,8 +51,9 @@ import Data
         , sizeToFloatSize
         , validIndex
         )
+import Dict
 import Model exposing (AppMode(..), Model)
-import Model.Playback exposing (PlaybackSpeed(..), initPlaybackConfig)
+import Model.Playback as PB
 import Msg exposing (Msg(..))
 
 
@@ -338,31 +339,33 @@ startPlaybackAgain =
     "pbStartAgain" |> send
 
 
-forwardCommand : Array ColorChange -> String
+forwardCommand : List ColorChange -> String
 forwardCommand colorChanges =
     let
         one change =
-            String.fromInt change.idx ++ "," ++ change.new
+            --String.fromInt change.idx ++ "," ++ change.new
+            String.fromInt change.index ++ "," ++ String.fromInt change.color
     in
-    "pbForward," ++ String.join "," (Array.toList <| Array.map one colorChanges)
+    "pbForward," ++ String.join "," (List.map one colorChanges)
 
 
-forward : Array ColorChange -> Cmd msg
+forward : List ColorChange -> Cmd msg
 forward colorChanges =
     -- pbForward,<i1>,<cc1>,<i2>,<cc2>...
     forwardCommand colorChanges |> send
 
 
-rewindCommand : Array ColorChange -> String
+rewindCommand : List ColorChange -> String
 rewindCommand colorChanges =
     let
         one change =
-            String.fromInt change.idx ++ "," ++ change.old
+            --String.fromInt change.idx ++ "," ++ change.old
+            String.fromInt change.index ++ "," ++ String.fromInt change.color
     in
-    "pbRewind," ++ String.join "," (Array.toList <| Array.map one colorChanges)
+    "pbRewind," ++ String.join "," (List.map one colorChanges)
 
 
-rewind : Array ColorChange -> Cmd msg
+rewind : List ColorChange -> Cmd msg
 rewind colorChanges =
     -- pbRewind,<i1>,<cc1>,<i2>,<cc2>...
     rewindCommand colorChanges |> send
@@ -388,17 +391,17 @@ changeSpeedCommand speed =
     "pbSpeed," ++ String.fromInt speed
 
 
-playbackChangeSpeed : PlaybackSpeed -> Cmd msg
+playbackChangeSpeed : PB.Speed -> Cmd msg
 playbackChangeSpeed spd =
     -- pbSpeed,<spd>
     case spd of
-        OneX ->
+        PB.OneX ->
             changeSpeedCommand 1 |> send
 
-        TwoX ->
+        PB.TwoX ->
             changeSpeedCommand 2 |> send
 
-        FourX ->
+        PB.FourX ->
             changeSpeedCommand 4 |> send
 
 
@@ -424,20 +427,9 @@ handleAckMessages model =
 
                 "pbInited" ->
                     case model.mode of
-                        PlaybackLoading ->
-                            let
-                                from =
-                                    1
-
-                                to =
-                                    Array.length model.colorHistory
-
-                                initConfig =
-                                    initPlaybackConfig from to
-                            in
-                            AppModeChange <| Playback initConfig
-
-                        RealtimeLoading ->
+                        --PlaybackLoading ->
+                        --    AppModeChange Playback
+                        Loading ->
                             NoOp
 
                         Realtime ->

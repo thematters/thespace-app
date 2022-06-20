@@ -40,5 +40,6 @@ env =
     , rpcProvider = Net.rpcProvider
     , polyscanEndpoint = "https://polygonscan.com/"
     , snapshotUriPrefix = "https://d3ogaonsclhjen.cloudfront.net/"
+    , playbackWindow = 30000
     , debug = False
     }

@@ -5,8 +5,10 @@ port module Rpc exposing
     , getAccount
     , getBlockNumber
     , getColorHistory
+    , getDeltas
     , getInitMap
     , getLatestColorEvents
+    , getLatestDeltaCids
     , getLatestPriceEvents
     , getLatestTaxEvents
     , getLatestTransferEvents
@@ -54,6 +56,10 @@ import Contract.TheSpace as Space
 import Data
     exposing
         ( BlockNumber
+        , Cid
+        , ColorChange
+        , ColorChangeDeltaBlock
+        , ColorChangeDeltaData
         , Index
         , OwnPixelsResultPage
         , Pixel
@@ -61,7 +67,6 @@ import Data
         , RpcErrorData
         , RpcErrorKind(..)
         , RpcResult(..)
-        , Snapshot
         , TaxRate
         , TokenInfo
         , TokenInfoKind(..)
@@ -69,6 +74,7 @@ import Data
         , WalletInfo(..)
         , accTax
         , defaultRpcError
+        , intToHex
         , safeColorId
         , unsafeBigIntToInt
         )
@@ -79,6 +85,8 @@ import Eth.Types exposing (Address, BlockId(..), Call, Hex)
 import Eth.Units exposing (EthUnit(..))
 import Eth.Utils exposing (add0x, addressToString, toAddress, unsafeToHex)
 import Hex
+import Http
+import Iso8601
 import Json.Decode as D
 import Json.Encode as E exposing (Value)
 import Msg exposing (Msg(..))
@@ -119,6 +127,7 @@ type alias RpcCallData =
 
 type MessageId
     = GetInitMap
+    | LatestPlaybackDeltaCids
     | WatchNewHeads
     | WatchColor
     | WatchPrice
@@ -143,13 +152,6 @@ type MessageId
 
 
 -- Helpers
-
-
-toSnapshot : Snapper.LatestSnapshotInfo -> Snapshot
-toSnapshot snp =
-    { blockNumber = snp.latestSnapshotBlock |> unsafeBigIntToInt
-    , cid = snp.latestSnapshotCid |> Snapper.trimCid
-    }
 
 
 toPixel : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixel -> Pixel
@@ -227,6 +229,9 @@ messageIdEncoder msgId =
         GetInitMap ->
             E.string "imap"
 
+        LatestPlaybackDeltaCids ->
+            E.string "pb"
+
         GetBlockNumber ->
             E.string "bk"
 
@@ -286,6 +291,9 @@ messageIdDecoder =
 
                 "imap" ->
                     GetInitMap
+
+                "pb" ->
+                    LatestPlaybackDeltaCids
 
                 "bk" ->
                     GetBlockNumber
@@ -380,8 +388,12 @@ resultDecoder id taxRate blockNum =
     in
     case id of
         GetInitMap ->
-            res Snapper.latestSnapshotInfoDecoder
-                |> D.map (toSnapshot >> RpcInitMap)
+            res Snapper.snapshotDecoder
+                |> D.map RpcInitMap
+
+        LatestPlaybackDeltaCids ->
+            res Snapper.deltaLogsDecoder
+                |> D.map RpcPlaybackCid
 
         WatchNewHeads ->
             resHex
@@ -668,7 +680,28 @@ openSocket =
 
 getInitMap : Cmd msg
 getInitMap =
-    call GetInitMap <| Snapper.latestSnapshotInfo contracts.snapper
+    call GetInitMap <| Snapper.latestSnapshot contracts.snapper
+
+
+getLatestDeltaCids : BlockNumber -> Cmd msg
+getLatestDeltaCids deltaBkNum =
+    send
+        { method = "eth_getLogs"
+        , id = LatestPlaybackDeltaCids
+        , params =
+            [ E.object
+                [ ( "address", EE.address contracts.snapper )
+                , ( "topics"
+                  , EE.topicsList
+                        [ Just topics.delta
+                        , Just <| unsafeToHex <| intToHex 0 -- regionId 0
+                        , Just <| unsafeToHex <| intToHex deltaBkNum
+                        ]
+                  )
+                , ( "fromBlock", E.string "earliest" )
+                ]
+            ]
+        }
 
 
 getLatestColorEvents : Int -> Cmd msg
@@ -877,6 +910,46 @@ switchNetwork rpc =
         , ( "params", E.list E.object [ params ] )
         ]
         |> walletOut
+
+
+
+-- Http API
+
+
+getDeltas : List Cid -> Cmd Msg
+getDeltas cids =
+    Cmd.batch <|
+        List.map
+            (\cid ->
+                Http.get
+                    { url = Config.snapshotUriPrefix ++ cid
+                    , expect = Http.expectJson DeltaRecieved deltaDataDecoder
+                    }
+            )
+            cids
+
+
+deltaDataDecoder : D.Decoder ColorChangeDeltaData
+deltaDataDecoder =
+    D.map3 ColorChangeDeltaData
+        (D.at [ "delta" ] (D.list deltaBlockDecoder))
+        (D.at [ "prev" ] (D.maybe D.string))
+        (D.at [ "snapshot" ] D.string)
+
+
+deltaBlockDecoder : D.Decoder ColorChangeDeltaBlock
+deltaBlockDecoder =
+    D.map3 ColorChangeDeltaBlock
+        (D.at [ "bk" ] D.int)
+        (D.at [ "cs" ] (D.list colorChangeDecoder))
+        (D.at [ "time" ] Iso8601.decoder)
+
+
+colorChangeDecoder : D.Decoder ColorChange
+colorChangeDecoder =
+    D.map2 ColorChange
+        (D.at [ "i" ] D.int)
+        (D.at [ "c" ] D.int)
 
 
 
