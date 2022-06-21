@@ -136,12 +136,23 @@ update msg model =
 
         RpcSocketReconnected ->
             ( { model | notif = Nothing }
-            , case model.blockNumber of
+            , let
+                cmds =
+                    [ Rpc.watchNewHeads
+                    , Rpc.watchColor
+                    , Rpc.watchPrice
+                    , Rpc.watchTransfer
+                    , Rpc.watchTax
+                    , Rpc.watchUbi
+                    , Rpc.watchDefault
+                    ]
+              in
+              case model.blockNumber of
                 Nothing ->
-                    Cmd.none
+                    Cmd.batch cmds
 
                 Just bk ->
-                    Rpc.getLatestColorEvents bk
+                    Cmd.batch <| Rpc.getLatestColorEvents bk :: cmds
             )
 
         ReInitApp ->
