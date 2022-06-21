@@ -1,8 +1,12 @@
 module Model.Playback exposing
-    ( LoadingAction(..)
-    , Playback
+    ( ColorChange
+    , ColorChangeDeltaBlock
+    , ColorChangeDeltaData
+    , LoadingAction(..)
+    , Playback(..)
     , Speed(..)
-    , addColorChange
+    , addColorEvent
+    , addColorEvents
     , addDeltaData
     , init
     , initDeltaCids
@@ -10,17 +14,7 @@ module Model.Playback exposing
 
 import Array exposing (Array)
 import Config
-import Data
-    exposing
-        ( BlockNumber
-        , Cid
-        , ColorChangeDelta
-        , ColorChangeDeltaBlock
-        , ColorChangeDeltaData
-        , ColorEvent
-        , ColorId
-        , Index
-        )
+import Data exposing (BlockNumber, Cid, ColorEvent, ColorId, Index)
 import Dict exposing (Dict)
 import Time exposing (Posix)
 
@@ -36,24 +30,28 @@ type Playback
 
 type alias LoadingData =
     { cids : List Cid
-    , deltas : Dict Cid ColorChangeDeltaData
+    , deltas : LoadingDataDeltas
     , events : List ColorEvent
     }
+
+
+type alias LoadingDataDeltas =
+    Dict Cid ColorChangeDeltaData
 
 
 type alias LoadedData =
     { status : Status
     , speed : Speed
-    , blocks : Dict BlockNumber ColorChangeDeltaBlock
-    , timeline : Array BlockInfoColorChange
-    , reverseTimeline : Array BlockInfoColorChange
+    , blocks : LoadedDataBlocks
+    , timeline : Timeline
+    , reverseTimeline : Timeline
     , events : List ColorEvent
     }
 
 
 type Status
     = Playing Progress
-    | Paused
+    | Paused Progress
 
 
 type alias Progress =
@@ -64,6 +62,37 @@ type Speed
     = OneX
     | TwoX
     | FourX
+
+
+type alias LoadedDataBlocks =
+    Dict BlockNumber ColorChangeDeltaBlock
+
+
+type alias ColorChangeDeltaData =
+    { delta : ColorChangeDelta
+    , prev : Maybe Cid
+    , snapshot : Cid
+    }
+
+
+type alias ColorChangeDelta =
+    List ColorChangeDeltaBlock
+
+
+type alias ColorChangeDeltaBlock =
+    { blockNumber : BlockNumber
+    , changes : List ColorChange
+    }
+
+
+type alias ColorChange =
+    { index : Index
+    , color : ColorId
+    }
+
+
+type alias Timeline =
+    Array BlockInfoColorChange
 
 
 type alias BlockInfoColorChange =
@@ -92,17 +121,17 @@ init =
 
 
 initDeltaCids : List Cid -> Playback -> Playback
-initDeltaCids cids pb_ =
-    case pb_ of
-        Loading pb ->
-            Loading { pb | cids = cids }
+initDeltaCids cids pb =
+    case pb of
+        Loading loadingData ->
+            Loading { loadingData | cids = cids }
 
         Ready _ ->
-            pb_
+            pb
 
 
-addColorChange : ColorEvent -> Playback -> Playback
-addColorChange cevt pb =
+addColorEvent : ColorEvent -> Playback -> Playback
+addColorEvent cevt pb =
     let
         addOne c data =
             { data | events = c :: data.events }
@@ -113,6 +142,20 @@ addColorChange cevt pb =
 
         Ready loadedData ->
             Ready <| addOne cevt loadedData
+
+
+addColorEvents : List ColorEvent -> Playback -> Playback
+addColorEvents cevts pb =
+    let
+        addMany cs data =
+            { data | events = data.events ++ List.reverse cs }
+    in
+    case pb of
+        Loading loadingData ->
+            Loading <| addMany cevts loadingData
+
+        Ready loadedData ->
+            Ready <| addMany cevts loadedData
 
 
 addDeltaData : ColorChangeDeltaData -> Playback -> ( Playback, LoadingAction )
@@ -132,13 +175,6 @@ addDeltaData deltaData pb =
                 genesisCid =
                     "genesis"
 
-                allCidLoaded =
-                    let
-                        notLoaded x =
-                            Dict.member x deltas |> not
-                    in
-                    cids |> List.filter notLoaded |> List.isEmpty
-
                 newLoadedDeltas =
                     let
                         cid =
@@ -153,6 +189,13 @@ addDeltaData deltaData pb =
                     in
                     deltas |> Dict.insert cid deltaData
 
+                allCidLoaded =
+                    let
+                        notLoaded x =
+                            Dict.member x newLoadedDeltas |> not
+                    in
+                    cids |> List.filter notLoaded |> List.length |> (==) 1
+
                 noMoreToLoad =
                     if allCidLoaded then
                         Dict.member genesisCid deltas
@@ -164,7 +207,7 @@ addDeltaData deltaData pb =
                 newLoadingData =
                     { loadingData | deltas = newLoadedDeltas }
             in
-            case ( noMoreToLoad, List.head cids ) of
+            case ( noMoreToLoad, deltaData.prev ) of
                 ( False, Just nextCid ) ->
                     ( Loading { newLoadingData | cids = nextCid :: cids }
                     , LoadMore nextCid
@@ -176,41 +219,198 @@ addDeltaData deltaData pb =
                     )
 
 
-finishLoading : LoadingData -> LoadedData
-finishLoading loadingData =
-    let
-        blocks =
-            loadingData.deltas |> deltasToBlocks
-    in
-    { status = Paused
-    , speed = OneX
-    , blocks = blocks
-    , timeline = timeline blocks loadingData.events
-    , reverseTimeline = Array.empty
-    , events = []
-    }
+start : Playback -> Playback
+start pb =
+    case pb of
+        Ready data ->
+            let
+                newData =
+                    if needRefresh data then
+                        data |> refreshLoaded
+
+                    else
+                        data
+            in
+            Ready { newData | status = Playing 0 }
+
+        _ ->
+            pb
 
 
-deltasToBlocks _ =
-    Dict.empty
+pause : Playback -> Playback
+pause pb =
+    case pb of
+        Ready data ->
+            case data.status of
+                Playing i ->
+                    Ready { data | status = Paused i }
+
+                _ ->
+                    pb
+
+        _ ->
+            pb
 
 
-timeline _ _ =
-    Array.empty
+speedUp : Playback -> Playback
+speedUp pb =
+    case pb of
+        Ready data ->
+            Ready { data | speed = data.speed |> nextSpeed }
+
+        _ ->
+            pb
+
+
+jumpTo : Int -> Playback -> Playback
+jumpTo i pb =
+    case pb of
+        Ready data ->
+            let
+                prog =
+                    i |> clamp 0 (Array.length data.timeline - 1)
+            in
+            case data.status of
+                Playing _ ->
+                    Ready { data | status = Playing prog }
+
+                Paused _ ->
+                    Ready { data | status = Paused prog }
+
+        _ ->
+            pb
+
+
+skipToStart : Playback -> Playback
+skipToStart pb =
+    case pb of
+        Ready data ->
+            case data.status of
+                Playing i ->
+                    Ready { data | status = Paused 0 }
+
+                _ ->
+                    pb
+
+        _ ->
+            pb
+
+
+skipToEnd : Playback -> Playback
+skipToEnd pb =
+    case pb of
+        Ready data ->
+            case data.status of
+                Playing i ->
+                    Ready
+                        { data
+                            | status = Paused <| Array.length data.timeline - 1
+                        }
+
+                _ ->
+                    pb
+
+        _ ->
+            pb
 
 
 
 -- Helpers
 
 
-sum : List Int -> Int
-sum =
-    List.foldl (+) 0
+finishLoading : LoadingData -> LoadedData
+finishLoading loadingData =
+    let
+        blocks =
+            blocksFromLoadingData loadingData
+    in
+    { status = Paused 0
+    , speed = OneX
+    , blocks = blocks
+    , timeline = blocksToTimeline blocks
+    , reverseTimeline = Array.empty
+    , events = []
+    }
 
 
-deltaLength : ColorChangeDelta -> Int
-deltaLength =
-    List.map (.changes >> List.length) >> sum
+needRefresh : LoadedData -> Bool
+needRefresh =
+    .events >> List.length >> (>) 0
+
+
+refreshLoaded : LoadedData -> LoadedData
+refreshLoaded { blocks, events } =
+    let
+        newBlocks =
+            accColorEvents events blocks
+    in
+    { status = Paused 0
+    , speed = OneX
+    , blocks = newBlocks
+    , timeline = blocksToTimeline newBlocks
+    , reverseTimeline = Array.empty
+    , events = []
+    }
+
+
+blocksFromLoadingData : LoadingData -> LoadedDataBlocks
+blocksFromLoadingData { deltas, events } =
+    let
+        blockList =
+            deltas |> Dict.values |> List.map .delta |> List.foldl (++) []
+
+        bkNums =
+            blockList |> List.map .blockNumber
+
+        blocks =
+            Dict.fromList <| List.map2 (\bk blk -> ( bk, blk )) bkNums blockList
+    in
+    accColorEvents events blocks
+
+
+accColorEvents : List ColorEvent -> LoadedDataBlocks -> LoadedDataBlocks
+accColorEvents events blocks =
+    events |> List.foldr accColorEvent blocks
+
+
+accColorEvent : ColorEvent -> LoadedDataBlocks -> LoadedDataBlocks
+accColorEvent { blockNumber, index, color } blocks =
+    let
+        update v =
+            let
+                c =
+                    { index = index, color = color }
+            in
+            case v of
+                Nothing ->
+                    Just
+                        { blockNumber = blockNumber, changes = [ c ] }
+
+                Just cs ->
+                    Just
+                        { cs | changes = cs.changes ++ [ c ] }
+    in
+    blocks |> Dict.update blockNumber update
+
+
+blocksToTimeline : LoadedDataBlocks -> Timeline
+blocksToTimeline blocks =
+    blocks
+        |> Dict.values
+        |> List.sortBy .blockNumber
+        |> List.map toInfoColorChangeList
+        |> List.foldl (++) []
+        |> Array.fromList
+
+
+toInfoColorChange : BlockNumber -> ColorChange -> BlockInfoColorChange
+toInfoColorChange bk { index, color } =
+    { index = index, color = color, blockNumber = bk }
+
+
+toInfoColorChangeList : ColorChangeDeltaBlock -> List BlockInfoColorChange
+toInfoColorChangeList { blockNumber, changes } =
+    changes |> List.map (toInfoColorChange blockNumber)
 
 
 deltaDataLength : ColorChangeDeltaData -> Int
@@ -218,35 +418,19 @@ deltaDataLength =
     .delta >> deltaLength
 
 
+deltaLength : ColorChangeDelta -> Int
+deltaLength =
+    List.map (.changes >> List.length) >> sum
+
+
+sum : List Int -> Int
+sum =
+    List.foldl (+) 0
+
+
 colorEventToBlockInfoColorChange : ColorEvent -> BlockInfoColorChange
 colorEventToBlockInfoColorChange { blockNumber, index, color } =
     { blockNumber = blockNumber, index = index, color = color }
-
-
-
--- Speed
---type alias PlaybackConfig =
---    { from : Int
---    , to : Int
---    , shareFrom : Int
---    , shareTo : Int
---    , current : Int
---    , status : PlaybackStatus
---    , speed : PlaybackSpeed
---    }
---type PlaybackStatus
---    = Playing
---    | Paused
---initPlaybackConfig : BlockNumber -> BlockNumber -> PlaybackConfig
---initPlaybackConfig from to =
---    { from = from
---    , to = to
---    , shareFrom = from
---    , shareTo = to
---    , speed = OneX
---    , current = 0
---    , status = Paused
---    }
 
 
 speedToString : Speed -> String

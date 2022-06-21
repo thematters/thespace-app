@@ -223,30 +223,6 @@ type alias WalletDetail =
     }
 
 
-type alias ColorChange =
-    { index : Index
-    , color : ColorId
-    }
-
-
-type alias ColorChangeDeltaBlock =
-    { blockNumber : BlockNumber
-    , changes : List ColorChange
-    , time : Posix
-    }
-
-
-type alias ColorChangeDelta =
-    List ColorChangeDeltaBlock
-
-
-type alias ColorChangeDeltaData =
-    { delta : List ColorChangeDeltaBlock
-    , prev : Maybe Cid
-    , snapshot : Cid
-    }
-
-
 type AbbrType
     = AbbrShort
     | AbbrNormal
@@ -280,7 +256,7 @@ type RpcResult
     | RpcPixel Pixel
     | RpcOwnPixels OwnPixelsResultPage
     | RpcTokenInfo TokenInfo
-    | RpcPlaybackCid (List Cid)
+    | RpcDeltaCids (List Cid)
     | RpcError RpcErrorData
 
 

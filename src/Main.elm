@@ -728,12 +728,26 @@ update msg model =
             ( { model | mode = Playback pb }, Cmd.none )
 
         -- Playback
-        DeltaRecieved data ->
+        DeltaRecieved jsonData ->
             let
-                _ =
-                    Debug.log "DeltaRecieved" data
+                --_ =
+                --    Debug.log "DeltaRecieved" jsonData
+                ( newPlayback, action ) =
+                    case jsonData of
+                        Ok data ->
+                            model.playback |> PB.addDeltaData data
+
+                        Err _ ->
+                            ( model.playback, PB.None )
             in
-            ( model, Cmd.none )
+            ( { model | playback = newPlayback }
+            , case action of
+                PB.None ->
+                    Cmd.none
+
+                PB.LoadMore cid ->
+                    Rpc.getDeltas [ cid ]
+            )
 
         PlaybackStart ->
             --let
@@ -1263,6 +1277,11 @@ handleRpcMessageRecieved model msg =
 
         RpcLatestColorLog cs ->
             let
+                m =
+                    { model
+                        | playback = model.playback |> PB.addColorEvents cs
+                    }
+
                 newActs =
                     if Config.debug then
                         let
@@ -1276,7 +1295,7 @@ handleRpcMessageRecieved model msg =
             in
             case model.mapStatus of
                 MSLoading ->
-                    ( { model
+                    ( { m
                         | mapStatus = MSLatestColorLoaded cs
                         , acts = newActs
                       }
@@ -1284,15 +1303,15 @@ handleRpcMessageRecieved model msg =
                     )
 
                 MSSnapshotInited ->
-                    ( { model | mapStatus = MSInited, acts = newActs }
+                    ( { m | mapStatus = MSInited, acts = newActs }
                     , C.initLatestColors cs
                     )
 
                 MSLatestColorLoaded _ ->
-                    ( model, Cmd.none )
+                    ( m, Cmd.none )
 
                 MSInited ->
-                    ( model, Cmd.none )
+                    ( m, Cmd.none )
 
         RpcLatestPriceLog ps ->
             if Config.debug then
@@ -1352,6 +1371,7 @@ handleRpcMessageRecieved model msg =
                     { model
                         | acts = ColorAct c :: model.acts
                         , queue = model.queue |> Dict.remove c.index
+                        , playback = model.playback |> PB.addColorEvent c
                     }
 
                 m2 =
@@ -1727,7 +1747,7 @@ handleRpcMessageRecieved model msg =
                 _ ->
                     ( model, Cmd.none )
 
-        RpcPlaybackCid cids ->
+        RpcDeltaCids cids ->
             ( { model | playback = model.playback |> PB.initDeltaCids cids }
             , Rpc.getDeltas cids
             )

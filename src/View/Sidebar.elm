@@ -69,6 +69,7 @@ import Model.Assets
         , loadedAssetsTotalUbi
         , pixelCollected
         )
+import Model.Playback as PB exposing (Playback)
 import Msg exposing (Msg(..))
 import View.Common exposing (..)
 
@@ -84,7 +85,7 @@ edge =
 
 navHeight : Float
 navHeight =
-    40
+    36
 
 
 acctInfoHeight : Float
@@ -217,8 +218,8 @@ scrollArea scrollH items infList itemView msg =
 -- Views
 
 
-viewSidebar : SidebarMode -> Size -> WalletInfo -> List Activity -> Assets -> SidebarInfLists -> TaxInfo -> Html Msg
-viewSidebar ( uiMode, infoType ) winSize wallet acts assets { actsInfList, assetsInfList } { mintTax } =
+viewSidebar : ( AppMode, SidebarMode, Playback ) -> Size -> WalletInfo -> List Activity -> Assets -> SidebarInfLists -> TaxInfo -> Html Msg
+viewSidebar ( appMode, ( uiMode, infoType ), playback ) winSize wallet acts assets { actsInfList, assetsInfList } { mintTax } =
     let
         modalW =
             sidebarWidth
@@ -254,7 +255,7 @@ viewSidebar ( uiMode, infoType ) winSize wallet acts assets { actsInfList, asset
                 [ css collapsedStyle ]
                 [ div
                     [ css [ margin (px edge), marginBottom (px 0) ] ]
-                    [ nav uiMode ]
+                    [ nav uiMode playback ]
                 ]
 
         ExpandedSidebar ->
@@ -267,7 +268,7 @@ viewSidebar ( uiMode, infoType ) winSize wallet acts assets { actsInfList, asset
                         , height (px heightWithoutLogs)
                         ]
                     ]
-                    [ nav uiMode
+                    [ nav uiMode playback
                     , acctInfo wallet
                     , switch wallet infoType assets
                     ]
@@ -295,8 +296,8 @@ viewSidebar ( uiMode, infoType ) winSize wallet acts assets { actsInfList, asset
                 ]
 
 
-nav : SidebarUIMode -> Html Msg
-nav uiMode =
+nav : SidebarUIMode -> Playback -> Html Msg
+nav uiMode playback =
     let
         style_ =
             [ displayFlex
@@ -331,13 +332,21 @@ nav uiMode =
         discord =
             linkIcon Config.discordLink "Discord" Icon.discord
 
-        --playback =
-        --    div
-        --        [ css [ cursor pointer ]
-        --        , title "Playback Recent History"
-        --        , onClick <| AppModeChange PlaybackLoading
-        --        ]
-        --        [ iconNormal Icon.clock ]
+        playback_ =
+            case playback of
+                PB.Loading _ ->
+                    phantomDiv
+
+                PB.Ready _ ->
+                    div
+                        [ css [ cursor pointer ]
+                        , title "Playback Recent History"
+
+                        --, onClick <| AppModeChange PlaybackLoading
+                        ]
+                        --[ iconHighlight Icon.history ]
+                        [ iconNormal Icon.history ]
+
         modeSwitch =
             div
                 [ css [ cursor pointer ]
@@ -369,9 +378,8 @@ nav uiMode =
         icons =
             div [ css iconsStyle ]
                 [ info_
-
-                --, playback
                 , discord
+                , playback_
                 , modeSwitch
                 ]
     in

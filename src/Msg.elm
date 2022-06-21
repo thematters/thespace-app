@@ -3,8 +3,7 @@ module Msg exposing (Msg(..))
 import Config.Env.Util exposing (RpcProvider)
 import Data
     exposing
-        ( ColorChangeDeltaData
-        , ColorId
+        ( ColorId
         , Index
         , Position
         , Price
@@ -23,6 +22,7 @@ import Model
         , SidebarUIMode(..)
         )
 import Model.Assets exposing (AssetsSort)
+import Model.Playback exposing (ColorChangeDeltaData)
 
 
 type Msg

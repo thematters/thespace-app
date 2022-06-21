@@ -20,20 +20,39 @@ view m =
             lazy2 Canvas.viewCanvas m.dragging m.pagePos
 
         minimap =
-            lazy5 MiniMap.viewMiniMap m.miniMapMode m.dragging m.winSize m.canvas m.cellPos
+            lazy5 MiniMap.viewMiniMap
+                m.miniMapMode
+                m.dragging
+                m.winSize
+                m.canvas
+                m.cellPos
 
         basicViews =
             globalStyle m.mode
                 ++ [ lazy2 Notif.viewNotif m.winSize m.notif
-                   , lazy3 Canvas.viewPointingHighlight m.dragging m.canvas m.cellPos
+                   , lazy3 Canvas.viewHoverHighlight m.dragging m.canvas m.cellPos
                    , Sponsor.viewSponsor
                    ]
 
         infoViews =
-            [ lazy7 Sidebar.viewSidebar m.sidebarMode m.winSize m.wallet m.acts m.assets m.sidebarInfLists m.taxInfo
+            [ lazy7 Sidebar.viewSidebar
+                ( m.mode, m.sidebarMode, m.playback )
+                m.winSize
+                m.wallet
+                m.acts
+                m.assets
+                m.sidebarInfLists
+                m.taxInfo
             , lazy2 Canvas.viewSelectHighlight m.canvas m.selectCell
             , lazy2 Canvas.viewQueuedHighlights m.queue m.canvas
-            , lazy7 Cell.viewSelectCell m.cellModalMode m.winSize m.canvas m.selectCell m.wallet m.taxInfo m.input
+            , lazy7 Cell.viewSelectCell
+                m.cellModalMode
+                m.winSize
+                m.canvas
+                m.selectCell
+                m.wallet
+                m.taxInfo
+                m.input
             ]
 
         realtimeViews =

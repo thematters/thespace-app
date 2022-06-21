@@ -384,6 +384,11 @@ iconGreen i =
     icon_ green i
 
 
+iconHighlight : Html msg -> Html msg
+iconHighlight i =
+    icon_ highlightColor1 i
+
+
 
 -- Loading Spinner
 

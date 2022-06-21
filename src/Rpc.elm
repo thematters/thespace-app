@@ -57,9 +57,6 @@ import Data
     exposing
         ( BlockNumber
         , Cid
-        , ColorChange
-        , ColorChangeDeltaBlock
-        , ColorChangeDeltaData
         , Index
         , OwnPixelsResultPage
         , Pixel
@@ -89,6 +86,12 @@ import Http
 import Iso8601
 import Json.Decode as D
 import Json.Encode as E exposing (Value)
+import Model.Playback
+    exposing
+        ( ColorChange
+        , ColorChangeDeltaBlock
+        , ColorChangeDeltaData
+        )
 import Msg exposing (Msg(..))
 
 
@@ -393,7 +396,7 @@ resultDecoder id taxRate blockNum =
 
         LatestPlaybackDeltaCids ->
             res Snapper.deltaLogsDecoder
-                |> D.map RpcPlaybackCid
+                |> D.map RpcDeltaCids
 
         WatchNewHeads ->
             resHex
@@ -939,10 +942,11 @@ deltaDataDecoder =
 
 deltaBlockDecoder : D.Decoder ColorChangeDeltaBlock
 deltaBlockDecoder =
-    D.map3 ColorChangeDeltaBlock
+    D.map2 ColorChangeDeltaBlock
+        --D.map3 ColorChangeDeltaBlock
+        --(D.at [ "time" ] Iso8601.decoder)
         (D.at [ "bk" ] D.int)
         (D.at [ "cs" ] (D.list colorChangeDecoder))
-        (D.at [ "time" ] Iso8601.decoder)
 
 
 colorChangeDecoder : D.Decoder ColorChange

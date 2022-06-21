@@ -36,7 +36,6 @@ import Config
 import Data
     exposing
         ( Cell
-        , ColorChange
         , ColorEvent
         , Delta
         , Index
@@ -331,7 +330,7 @@ startPlaybackAgain =
     "pbStartAgain" |> send
 
 
-forwardCommand : List ColorChange -> String
+forwardCommand : List PB.ColorChange -> String
 forwardCommand colorChanges =
     let
         one change =
@@ -341,13 +340,13 @@ forwardCommand colorChanges =
     "pbForward," ++ String.join "," (List.map one colorChanges)
 
 
-forward : List ColorChange -> Cmd msg
+forward : List PB.ColorChange -> Cmd msg
 forward colorChanges =
     -- pbForward,<i1>,<cc1>,<i2>,<cc2>...
     forwardCommand colorChanges |> send
 
 
-rewindCommand : List ColorChange -> String
+rewindCommand : List PB.ColorChange -> String
 rewindCommand colorChanges =
     let
         one change =
@@ -357,7 +356,7 @@ rewindCommand colorChanges =
     "pbRewind," ++ String.join "," (List.map one colorChanges)
 
 
-rewind : List ColorChange -> Cmd msg
+rewind : List PB.ColorChange -> Cmd msg
 rewind colorChanges =
     -- pbRewind,<i1>,<cc1>,<i2>,<cc2>...
     rewindCommand colorChanges |> send
