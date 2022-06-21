@@ -1263,20 +1263,11 @@ handleRpcMessageRecieved model msg =
 
         RpcLatestColorLog cs ->
             let
-                colorEventToActivity c =
-                    case c of
-                        Nothing ->
-                            ActError <|
-                                defaultRpcErrorData "invalid color event"
-
-                        Just cevt ->
-                            ColorAct cevt
-
                 newActs =
                     if Config.debug then
                         let
                             acts =
-                                List.map colorEventToActivity cs
+                                List.map ColorAct cs
                         in
                         (model.acts ++ acts) |> sortActs
 
@@ -1306,17 +1297,8 @@ handleRpcMessageRecieved model msg =
         RpcLatestPriceLog ps ->
             if Config.debug then
                 let
-                    priceEventToActivity p =
-                        case p of
-                            Nothing ->
-                                ActError <|
-                                    defaultRpcErrorData "invalid price event"
-
-                            Just pevt ->
-                                PriceAct pevt
-
                     acts =
-                        ps |> List.map priceEventToActivity
+                        ps |> List.map PriceAct
                 in
                 ( { model | acts = (model.acts ++ acts) |> sortActs }
                 , Cmd.none
@@ -1328,17 +1310,8 @@ handleRpcMessageRecieved model msg =
         RpcLatestTransferLog ts ->
             if Config.debug then
                 let
-                    transferEventToActivity t =
-                        case t of
-                            Nothing ->
-                                ActError <|
-                                    defaultRpcErrorData "invalid transfer event"
-
-                            Just tevt ->
-                                TransferAct tevt
-
                     acts =
-                        ts |> List.map transferEventToActivity
+                        ts |> List.map TransferAct
                 in
                 ( { model | acts = (model.acts ++ acts) |> sortActs }
                 , Cmd.none
@@ -1350,17 +1323,8 @@ handleRpcMessageRecieved model msg =
         RpcLatestTaxLog ts ->
             if Config.debug then
                 let
-                    taxEventToActivity t =
-                        case t of
-                            Nothing ->
-                                ActError <|
-                                    defaultRpcErrorData "invalid price event"
-
-                            Just tevt ->
-                                TaxAct tevt
-
                     acts =
-                        ts |> List.map taxEventToActivity
+                        ts |> List.map TaxAct
                 in
                 ( { model | acts = (model.acts ++ acts) |> sortActs }
                 , Cmd.none
@@ -1372,17 +1336,8 @@ handleRpcMessageRecieved model msg =
         RpcLatestUbiLog us ->
             if Config.debug then
                 let
-                    ubiEventToActivity u =
-                        case u of
-                            Nothing ->
-                                ActError <|
-                                    defaultRpcErrorData "invalid price event"
-
-                            Just uevt ->
-                                UbiAct uevt
-
                     acts =
-                        us |> List.map ubiEventToActivity
+                        us |> List.map UbiAct
                 in
                 ( { model | acts = (model.acts ++ acts) |> sortActs }
                 , Cmd.none
@@ -1430,7 +1385,7 @@ handleRpcMessageRecieved model msg =
                         _ ->
                             m2
             in
-            ( newModel, C.update [ Just c ] )
+            ( newModel, C.update [ c ] )
 
         RpcPriceEvent p ->
             let

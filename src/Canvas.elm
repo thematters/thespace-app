@@ -229,23 +229,18 @@ initMapSnapshot trans winSize initImageUri =
     initMapSnapshotCommand trans winSize initImageUri |> send
 
 
-toIdxCC : Maybe ColorEvent -> String
-toIdxCC cevt =
-    case cevt of
-        Nothing ->
-            ""
+toIdxCC : ColorEvent -> String
+toIdxCC { removed, index, color } =
+    if not <| validIndex index || removed then
+        ""
 
-        Just { removed, index, color } ->
-            if not <| validIndex index || removed then
-                ""
-
-            else
-                String.fromInt (dec index)
-                    ++ ","
-                    ++ (String.fromInt <| dec <| safeColorId color)
+    else
+        String.fromInt (dec index)
+            ++ ","
+            ++ (String.fromInt <| dec <| safeColorId color)
 
 
-coloEventToCmdStr : List (Maybe ColorEvent) -> String
+coloEventToCmdStr : List ColorEvent -> String
 coloEventToCmdStr cevts =
     cevts
         |> List.map toIdxCC
@@ -253,7 +248,7 @@ coloEventToCmdStr cevts =
         |> String.join ","
 
 
-initLatestColors : List (Maybe ColorEvent) -> Cmd msg
+initLatestColors : List ColorEvent -> Cmd msg
 initLatestColors cevts =
     -- initLatestColors,<i1>,<cc1>,<i2>,<cc2>...
     let
@@ -261,14 +256,13 @@ initLatestColors cevts =
             coloEventToCmdStr cevts
     in
     if idxCCStr == "" then
-        -- we still need to send this to finish initialization when no colors
         "initLatestColors" |> send
 
     else
         "initLatestColors," ++ coloEventToCmdStr cevts |> send
 
 
-update : List (Maybe ColorEvent) -> Cmd msg
+update : List ColorEvent -> Cmd msg
 update cevts =
     -- update,<i1>,<cc1>,<i2>,<cc2>...
     let
@@ -305,8 +299,6 @@ resetCommand trans size =
             size
     in
     transCommand trans
-        --++ ","
-        --++ String.fromFloat trans.zoom
         ++ ","
         ++ String.fromInt w
         ++ ","

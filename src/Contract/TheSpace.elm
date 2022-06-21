@@ -309,26 +309,26 @@ ubiDecoder =
     taxUbiDecoder UbiEvent
 
 
-colorLogsDecoder : D.Decoder (List (Maybe ColorEvent))
+colorLogsDecoder : D.Decoder (List ColorEvent)
 colorLogsDecoder =
-    D.list (D.maybe colorDecoder)
+    D.list colorDecoder
 
 
-priceLogsDecoder : D.Decoder (List (Maybe PriceEvent))
+priceLogsDecoder : D.Decoder (List PriceEvent)
 priceLogsDecoder =
-    D.list (D.maybe priceDecoder)
+    D.list priceDecoder
 
 
-transferLogsDecoder : D.Decoder (List (Maybe TransferEvent))
+transferLogsDecoder : D.Decoder (List TransferEvent)
 transferLogsDecoder =
-    D.list (D.maybe transferDecoder)
+    D.list transferDecoder
 
 
-taxLogsDecoder : D.Decoder (List (Maybe TaxEvent))
+taxLogsDecoder : D.Decoder (List TaxEvent)
 taxLogsDecoder =
-    D.list (D.maybe taxDecoder)
+    D.list taxDecoder
 
 
-ubiLogsDecoder : D.Decoder (List (Maybe UbiEvent))
+ubiLogsDecoder : D.Decoder (List UbiEvent)
 ubiLogsDecoder =
-    D.list (D.maybe ubiDecoder)
+    D.list ubiDecoder

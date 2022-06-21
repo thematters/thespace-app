@@ -162,7 +162,7 @@ type alias SidebarInfLists =
 type MapStatus
     = MSLoading
     | MSSnapshotInited
-    | MSLatestColorLoaded (List (Maybe ColorEvent))
+    | MSLatestColorLoaded (List ColorEvent)
     | MSInited
 
 

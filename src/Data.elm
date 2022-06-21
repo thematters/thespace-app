@@ -266,11 +266,11 @@ type RpcResult
     | RpcTaxRate TaxRate
     | RpcTreasuryShare TreasuryShare
     | RpcMintTax Price
-    | RpcLatestColorLog (List (Maybe ColorEvent))
-    | RpcLatestPriceLog (List (Maybe PriceEvent))
-    | RpcLatestTransferLog (List (Maybe TransferEvent))
-    | RpcLatestTaxLog (List (Maybe TaxEvent))
-    | RpcLatestUbiLog (List (Maybe UbiEvent))
+    | RpcLatestColorLog (List ColorEvent)
+    | RpcLatestPriceLog (List PriceEvent)
+    | RpcLatestTransferLog (List TransferEvent)
+    | RpcLatestTaxLog (List TaxEvent)
+    | RpcLatestUbiLog (List UbiEvent)
     | RpcColorEvent ColorEvent
     | RpcPriceEvent PriceEvent
     | RpcTransferEvent TransferEvent
