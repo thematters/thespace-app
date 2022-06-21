@@ -2,51 +2,94 @@ let env = "prod"
 let debug = false
 let wsClosed = false
 
-function registerSocket(app, ws) {
-    const debugOnSend = msg => {
-        console.log("Out:", msg)
-        if (typeof msg.id !== "undefined")
-            console.time(msg.id)
-        ws.send(JSON.stringify(msg))
-    }
+const reconnectDelay = 2000
 
-    const debugOnMessage = evt => {
-        const msg = JSON.parse(evt.data)
-        console.log("In:", msg)
-        if (typeof msg.id !== "undefined")
-            console.timeEnd(msg.id)
-        app.ports.rpcSocketIn.send(msg)
-    }
-
-    if (debug) {
-        ws.onmessage = debugOnMessage
-        app.ports.rpcSocketOut.subscribe(debugOnSend)
-    } else {
-        ws.onmessage = evt => app.ports.rpcSocketIn.send(JSON.parse(evt.data))
-        app.ports.rpcSocketOut.subscribe(msg => ws.send(JSON.stringify(msg)))
-    }
-
-    ws.onopen = () => app.ports.rpcSocketControl.send(true)
-    ws.onclose = () => {
-        wsClosed = true
-        app.ports.rpcSocketControl.send(false)
+function onOpen(app) {
+    return () => {
+        if (wsClosed) {
+            app.ports.rpcSocketControl.send("reconnected")
+            wsClosed = false
+        } else {
+            app.ports.rpcSocketControl.send("opened")
+        }
     }
 }
 
-async function registerWallet(app) {
+function onSend(ws) {
+    return msg => {
+        if (debug) {
+            console.log("Out:", msg)
+            if (typeof msg.id !== "undefined") console.time(msg.id)
+        }
+        ws.send(JSON.stringify(msg))
+    }
+}
+
+function onMessage(app) {
+    return evt => {
+        const msg = JSON.parse(evt.data)
+        if (debug) {
+            console.log("In:", msg)
+            if (typeof msg.id !== "undefined") console.timeEnd(msg.id)
+        }
+        app.ports.rpcSocketIn.send(msg)
+    }
+}
+
+function onClose(app, rpc, oldSocket, oldSendHandler) {
+
+    const attemptReconnect = (app, rpc) => {
+        try {
+            initSocket(app, rpc)
+        } catch (err) {
+            app.ports.rpcSocketControl.send("closed")
+        }
+    }
+
+    return () => {
+        if (!wsClosed && document.visibilityState === "visible") {
+            wsClosed = true
+            app.ports.rpcSocketControl.send("reconnecting")
+            deinitSocket(app, oldSocket, oldSendHandler)
+            setTimeout(attemptReconnect, reconnectDelay, app, rpc)
+        } else {
+            wsClosed = true
+            app.ports.rpcSocketControl.send("closed")
+        }
+    }
+}
+
+function initSocket(app, rpc) {
+    let ws = new WebSocket(rpc)
+    let sendHandler = onSend(ws)
+    ws.onopen = onOpen(app)
+    ws.onclose = onClose(app, rpc, ws, sendHandler)
+    ws.onmessage = onMessage(app)
+    app.ports.rpcSocketOut.subscribe(sendHandler)
+}
+
+function deinitSocket(app, ws, sendHandler) {
+    ws.onopen = undefined
+    ws.onclose = undefined
+    ws.onmessage = undefined
+    app.ports.rpcSocketOut.unsubscribe(sendHandler)
+}
+
+async function initWallet(app) {
     const send = (msg) => {
         if (debug) console.log("Wallet In:", msg)
         app.ports.walletIn.send(msg)
     }
 
-    const noMetaMask = () => {
-        return typeof window.ethereum === "undefined"
+    const metaMaskNotInstalled = () => {
+        return typeof window.ethereum === "undefined" || !ethereum.isMetaMask
     }
 
     const metaMaskLocked = async () => {
         if (typeof window.ethereum._metamask !== "undefined") {
             return !await ethereum._metamask.isUnlocked()
         } else {
+            // bypass check if `window.ethereum._metamask` not injected
             return false
         }
     }
@@ -92,8 +135,14 @@ async function registerWallet(app) {
     const walletHandler = async (msg) => {
         if (debug) console.log("Wallet Out:", msg)
 
+        // refresh app
+        if (msg.method === "reinitApp") {
+            window.location.reload()
+            return
+        }
+
         // check if MetaMask is installed?
-        if (noMetaMask()) {
+        if (metaMaskNotInstalled()) {
             send({ type: "no-wallet" })
             return
         }
@@ -105,6 +154,7 @@ async function registerWallet(app) {
         }
 
         switch (msg.method) {
+
             case "wallet_addEthereumChain":
                 try {
                     // try switch first
@@ -113,7 +163,7 @@ async function registerWallet(app) {
                         params: [{ chainId: msg.params[0].chainId }],
                     })
                 } catch (switchErr) {
-                    if (switchErr.code === 4902 || switchErr.code ===  -32603)
+                    if (switchErr.code === 4902 || switchErr.code === -32603)
                         try {
                             await ethereum.request(msg)
                         } catch (addErr) {
@@ -180,7 +230,7 @@ async function registerWallet(app) {
         }
     }
 
-    if (!noMetaMask()) {
+    if (!metaMaskNotInstalled()) {
         // register MetaMask account/chain change events
         ethereum.on('accountsChanged', async () => send(await getAcct()))
         ethereum.on('chainChanged', async () => send(await getAcct()))
@@ -189,8 +239,9 @@ async function registerWallet(app) {
 }
 
 export function registerRpc(app) {
+
     addEventListener('visibilitychange', event => {
-        if (wsClosed)
+        if (wsClosed && document.visibilityState === "visible")
             window.location.reload()
     })
 
@@ -198,8 +249,8 @@ export function registerRpc(app) {
         (data) => {
             env = data.env
             debug = data.debug
-            registerSocket(app, new WebSocket(data.rpc))
-            registerWallet(app)
+            initSocket(app, data.rpc)
+            initWallet(app)
         }
     )
 }

@@ -121,11 +121,31 @@ update msg model =
             handleRpcMessageRecieved model message
 
         RpcSocketClosed ->
-            ( { model
-                | notif = Just <| ErrorNotif "Connection lost, please refresh."
-              }
-            , Cmd.none
+            let
+                notif =
+                    ConnectionLostNotif
+            in
+            ( { model | notif = Just notif }, Cmd.none )
+
+        RpcSocketReconnecting ->
+            let
+                notif =
+                    ReconnectingNotif
+            in
+            ( { model | notif = Just notif }, Cmd.none )
+
+        RpcSocketReconnected ->
+            ( { model | notif = Nothing }
+            , case model.blockNumber of
+                Nothing ->
+                    Cmd.none
+
+                Just bk ->
+                    Rpc.getLatestColorEvents bk
             )
+
+        ReInitApp ->
+            ( model, Rpc.reinitApp )
 
         -- Wallet
         ConnectMetaMask ->
@@ -159,9 +179,6 @@ update msg model =
                 _ ->
                     Cmd.none
             )
-
-        WalletError errMsg ->
-            ( { model | notif = Just <| ErrorNotif errMsg }, Cmd.none )
 
         RequestApproveAllBalance ->
             ( model

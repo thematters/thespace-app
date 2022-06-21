@@ -60,7 +60,7 @@ initModel =
         }
     , acts = []
     , assets = A.AssetsNotLoaded
-    , notif = Just LoadingNotif
+    , notif = Just SplashNotif
     , colorHistory = Array.empty
     , queue = Dict.empty
     }
@@ -227,8 +227,9 @@ type PixelOpStep
 
 
 type Notification
-    = ErrorNotif String
-    | LoadingNotif
+    = SplashNotif
+    | ConnectionLostNotif
+    | ReconnectingNotif
 
 
 initWatchIds : WatchIds
