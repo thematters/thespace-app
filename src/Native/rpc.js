@@ -21,9 +21,10 @@ function onSend(ws) {
             console.log("Out:", msg)
             if (typeof msg.id !== "undefined") console.time(msg.id)
         }
-        // console.log("onSend-before", msg)
-        if (msg.method == "eth_call" && msg.params.length == 1) msg.params.push("latest")
-        console.log("onSend-after", msg)
+        // Alchemy doesn't requrie `latest`, but seems majority of the 
+        // providers do.
+        if (msg.method == "eth_call" && msg.params.length == 1)
+            msg.params.push("latest")
         ws.send(JSON.stringify(msg))
     }
 }
