@@ -16,6 +16,7 @@ type alias Env =
     , polyscanEndpoint : String
     , playbackWindow : Int
     , snapshotUriPrefix : String
+    , genesisSnapshotCid : String
     }
 
 

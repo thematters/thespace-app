@@ -70,6 +70,7 @@ import Data
         , WalletDetail
         , WalletInfo(..)
         , accTax
+        , cidToSnapshotUri
         , defaultRpcError
         , intToHex
         , safeColorId
@@ -698,10 +699,10 @@ getLatestDeltaCids deltaBkNum =
                   , EE.topicsList
                         [ Just topics.delta
                         , Just <| unsafeToHex <| intToHex 0 -- regionId 0
-                        , Just <| unsafeToHex <| intToHex deltaBkNum
                         ]
                   )
-                , ( "fromBlock", E.string "earliest" )
+                , ( "fromBlock", EE.hexInt deltaBkNum )
+                , ( "toBlock", E.string "latest" )
                 ]
             ]
         }
@@ -925,26 +926,32 @@ getDeltas cids =
         List.map
             (\cid ->
                 Http.get
-                    { url = Config.snapshotUriPrefix ++ cid
-                    , expect = Http.expectJson DeltaRecieved deltaDataDecoder
+                    { url = cidToSnapshotUri cid
+                    , expect =
+                        Http.expectJson DeltaRecieved <|
+                            deltaDataDecoder cid
                     }
             )
             cids
 
 
-deltaDataDecoder : D.Decoder ColorChangeDeltaData
-deltaDataDecoder =
-    D.map3 ColorChangeDeltaData
+deltaDataDecoder : Cid -> D.Decoder ColorChangeDeltaData
+deltaDataDecoder cid =
+    D.map4 ColorChangeDeltaData
         (D.at [ "delta" ] (D.list deltaBlockDecoder))
         (D.at [ "prev" ] (D.maybe D.string))
         (D.at [ "snapshot" ] D.string)
+        (D.succeed cid)
 
 
 deltaBlockDecoder : D.Decoder ColorChangeDeltaBlock
 deltaBlockDecoder =
-    D.map2 ColorChangeDeltaBlock
-        --D.map3 ColorChangeDeltaBlock
-        --(D.at [ "time" ] Iso8601.decoder)
+    --D.map3 ColorChangeDeltaBlock
+    --    (D.at [ "time" ] Iso8601.decoder)
+    --    (D.at [ "bk" ] D.int)
+    --    (D.at [ "cs" ] (D.list colorChangeDecoder))
+    D.map2
+        ColorChangeDeltaBlock
         (D.at [ "bk" ] D.int)
         (D.at [ "cs" ] (D.list colorChangeDecoder))
 

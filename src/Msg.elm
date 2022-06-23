@@ -29,7 +29,7 @@ type Msg
     = NoOp
       -- App Modes
     | AppModeChange AppMode
-    | PlaybackSpeedChange
+    | PlaybackCircleSpeed
     | PlaybackPause
     | PlaybackStart
     | PlaybackTick

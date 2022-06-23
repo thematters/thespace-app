@@ -38,8 +38,8 @@ import Env exposing (env)
 import Eth.Defaults exposing (zeroAddress)
 import Eth.Units exposing (EthUnit(..))
 import Html
-import Html.Styled exposing (Html, button, div, img, text, toUnstyled)
-import Html.Styled.Attributes exposing (css, href, src, title)
+import Html.Styled exposing (Html, button, div, img, input, text, toUnstyled)
+import Html.Styled.Attributes exposing (css, href, src, title, type_, value)
 import Html.Styled.Events exposing (onClick)
 import InfiniteList as Inf
 import Model
@@ -69,7 +69,7 @@ import Model.Assets
         , loadedAssetsTotalUbi
         , pixelCollected
         )
-import Model.Playback as PB exposing (Playback)
+import Model.Playback as PB exposing (Playback, Status, Timeline)
 import Msg exposing (Msg(..))
 import View.Common exposing (..)
 
@@ -218,6 +218,217 @@ scrollArea scrollH items infList itemView msg =
 -- Views
 
 
+viewPlaybackLoading : Html Msg
+viewPlaybackLoading =
+    let
+        baseStyle =
+            [ position absolute
+            , zIndex (int sidebarzIndex)
+            , top (px modalEdge)
+            , left (px modalEdge)
+
+            --, width (px 446)
+            , minWidth (px 446)
+            , modalBoxShadow
+            , modalRadius
+            , backgroundColor modalBackgroundColor
+            , height (px <| navHeight + modalEdge * 2)
+            ]
+    in
+    div [ css baseStyle ]
+        [ div
+            [ css
+                [ displayFlex
+                , justifyContent spaceBetween
+                , alignItems center
+
+                --, height (px navHeight)
+                , height (pct 100)
+                , marginLeft (px modalEdge)
+                , marginRight (px modalEdge)
+                ]
+            ]
+            [ div [ css [ marginRight (px 10) ] ] [ logo ]
+            , spinner bigTextSize grayStr
+            , progressDisabled
+            , circleSpeedDisabled
+            , div
+                [ css [ marginLeft (px 10), cursor pointer ]
+                , onClick <| AppModeChange Realtime
+                ]
+                [ iconNormal Icon.close ]
+            ]
+        ]
+
+
+viewPlayback : Playback -> Html Msg
+viewPlayback pb =
+    case pb of
+        PB.Loading _ ->
+            phantomDiv
+
+        PB.Ready { speed, status, timeline } ->
+            let
+                baseStyle =
+                    [ position absolute
+                    , zIndex (int sidebarzIndex)
+                    , top (px modalEdge)
+                    , left (px modalEdge)
+
+                    --, width (px 446)
+                    , minWidth (px 446)
+                    , modalBoxShadow
+                    , modalRadius
+                    , backgroundColor modalBackgroundColor
+                    , height (px <| navHeight + modalEdge * 2)
+                    ]
+            in
+            div [ css baseStyle ]
+                [ div
+                    [ css
+                        [ displayFlex
+                        , justifyContent spaceBetween
+                        , alignItems center
+
+                        --, height (px navHeight)
+                        , height (pct 100)
+                        , marginLeft (px modalEdge)
+                        , marginRight (px modalEdge)
+                        ]
+                    ]
+                    [ div [ css [ marginRight (px 10) ] ] [ logo ]
+                    , togglePlay status
+
+                    --, iconNormal Icon.pause
+                    --, iconNormal Icon.skipBack
+                    , progress status timeline
+
+                    --, iconNormal Icon.skipForward
+                    , circleSpeed speed
+                    , div
+                        [ css [ marginLeft (px 10), cursor pointer ]
+                        , onClick <| AppModeChange Realtime
+                        ]
+                        [ iconNormal Icon.close ]
+                    ]
+                ]
+
+
+togglePlay status =
+    case status of
+        PB.Playing _ ->
+            div [ css [ cursor pointer ], onClick PlaybackPause ]
+                [ iconNormal Icon.pause ]
+
+        PB.Paused _ ->
+            div [ css [ cursor pointer ], onClick PlaybackStart ]
+                [ iconNormal Icon.play ]
+
+
+circleSpeedDisabled =
+    div
+        [ css
+            [ border3 (px 2) solid lightgray
+            , borderRadius (px 8)
+            , padding (px 4)
+            , color lightgray
+            , fontWeight bold
+            ]
+        ]
+        [ text "1X" ]
+
+
+circleSpeed spd =
+    div
+        [ css
+            [ border3 (px 2) solid secondary
+            , borderRadius (px 8)
+            , padding (px 4)
+            , color secondary
+            , fontWeight bold
+            , cursor pointer
+            ]
+        , onClick PlaybackCircleSpeed
+        ]
+        [ text <| PB.speedToString spd ]
+
+
+progressBarWidth : Float
+progressBarWidth =
+    140
+
+
+progressDisabled =
+    div
+        [ css
+            [ width (px progressBarWidth)
+            , borderBottom3 (px 2) solid lightgray
+            ]
+        ]
+        []
+
+
+progress : Status -> Timeline -> Html Msg
+progress status timeline =
+    let
+        progressPseudoStyle =
+            [ width (px 25)
+            , height (px 25)
+            , border (px 0)
+            , backgroundColor highlightColor2
+            , cursor pointer
+            ]
+
+        progressStyle =
+            [ width (px progressBarWidth)
+            , height (px 2)
+            , opacity (num 0.7)
+            , outline none
+            , backgroundColor secondary
+            , property "-webkit-appearance" "none"
+            , property "appearance" "none"
+            , property "opacity" "0.7"
+            , property "-webkit-transition" ".2s"
+            , property "transition" "opacity .2s"
+            , pseudoClass "-webkit-slider-thumb"
+                (progressPseudoStyle
+                    ++ [ property "appearance" "none"
+                       , property "-webkit-appearance" "none"
+                       ]
+                )
+            , pseudoClass "-moz-range-thumb" progressPseudoStyle
+            ]
+
+        limit =
+            PB.maxProgress timeline
+
+        current =
+            case status of
+                PB.Playing i ->
+                    i
+
+                PB.Paused i ->
+                    i
+    in
+    input
+        [ type_ "range"
+        , Html.Styled.Attributes.min <| String.fromInt 0
+        , Html.Styled.Attributes.max <| String.fromInt limit
+        , value <| String.fromInt current
+
+        --, onInput (\v -> PlaybackSlide v)
+        , css progressStyle
+        ]
+        []
+
+
+
+--[ div
+--    [ css [ margin (px edge), marginBottom (px 0) ] ]
+--    [ nav uiMode playback ]
+--]
+
+
 viewSidebar : ( AppMode, SidebarMode, Playback ) -> Size -> WalletInfo -> List Activity -> Assets -> SidebarInfLists -> TaxInfo -> Html Msg
 viewSidebar ( appMode, ( uiMode, infoType ), playback ) winSize wallet acts assets { actsInfList, assetsInfList } { mintTax } =
     let
@@ -249,51 +460,63 @@ viewSidebar ( appMode, ( uiMode, infoType ), playback ) winSize wallet acts asse
         expandedStyle =
             height (px modalH) :: baseStyle
     in
-    case uiMode of
-        CollapsedSidebar ->
-            div
-                [ css collapsedStyle ]
-                [ div
-                    [ css [ margin (px edge), marginBottom (px 0) ] ]
-                    [ nav uiMode playback ]
-                ]
+    case appMode of
+        PlaybackLoading ->
+            viewPlaybackLoading
 
-        ExpandedSidebar ->
-            div
-                [ css expandedStyle ]
-                [ div
-                    [ css
-                        [ margin (px edge)
-                        , marginBottom (px 0)
-                        , height (px heightWithoutLogs)
+        Playback ->
+            viewPlayback playback
+
+        _ ->
+            case uiMode of
+                CollapsedSidebar ->
+                    div
+                        [ css collapsedStyle ]
+                        [ div
+                            [ css [ margin (px edge), marginBottom (px 0) ] ]
+                            [ nav uiMode playback ]
                         ]
-                    ]
-                    [ nav uiMode playback
-                    , acctInfo wallet
-                    , switch wallet infoType assets
-                    ]
-                , let
-                    acts_ =
-                        viewActs modalH wallet mintTax actsInfList acts
 
-                    assets_ =
-                        viewAssets modalH wallet assetsInfList assets
-                  in
-                  case infoType of
-                    -- Some trick as canvas, using fixed layout
-                    -- to avoid scroll reset problem
-                    ActLogs ->
-                        div []
-                            [ div [] [ acts_ ]
-                            , div [ css [ display none ] ] [ assets_ ]
+                ExpandedSidebar ->
+                    div
+                        [ css expandedStyle ]
+                        [ div
+                            [ css
+                                [ margin (px edge)
+                                , marginBottom (px 0)
+                                , height (px heightWithoutLogs)
+                                ]
                             ]
+                            [ nav uiMode playback
+                            , acctInfo wallet
+                            , switch wallet infoType assets
+                            ]
+                        , let
+                            acts_ =
+                                viewActs modalH wallet mintTax actsInfList acts
 
-                    AssetsManager ->
-                        div []
-                            [ div [ css [ display none ] ] [ acts_ ]
-                            , div [] [ assets_ ]
-                            ]
-                ]
+                            assets_ =
+                                viewAssets modalH wallet assetsInfList assets
+                          in
+                          case infoType of
+                            -- Some trick as canvas, using fixed layout
+                            -- to avoid scroll reset problem
+                            ActLogs ->
+                                div []
+                                    [ div [] [ acts_ ]
+                                    , div [ css [ display none ] ] [ assets_ ]
+                                    ]
+
+                            AssetsManager ->
+                                div []
+                                    [ div [ css [ display none ] ] [ acts_ ]
+                                    , div [] [ assets_ ]
+                                    ]
+                        ]
+
+
+logo =
+    img [ src logoDataUri, css [ height (px navHeight) ] ] []
 
 
 nav : SidebarUIMode -> Playback -> Html Msg
@@ -313,9 +536,6 @@ nav uiMode playback =
             , marginTop (px -4)
             ]
 
-        logo =
-            img [ src logoDataUri, css [ height (px navHeight) ] ] []
-
         linkIcon url title_ icon =
             div [ css [ cursor pointer ], title title_ ]
                 [ Html.Styled.a
@@ -333,18 +553,20 @@ nav uiMode playback =
             linkIcon Config.discordLink "Discord" Icon.discord
 
         playback_ =
+            let
+                title_ =
+                    "Playback Recent History"
+            in
             case playback of
                 PB.Loading _ ->
-                    phantomDiv
+                    div [ title title_ ] [ iconLight Icon.history ]
 
                 PB.Ready _ ->
                     div
                         [ css [ cursor pointer ]
-                        , title "Playback Recent History"
-
-                        --, onClick <| AppModeChange PlaybackLoading
+                        , title title_
+                        , onClick <| AppModeChange PlaybackLoading
                         ]
-                        --[ iconHighlight Icon.history ]
                         [ iconNormal Icon.history ]
 
         modeSwitch =
@@ -767,7 +989,7 @@ viewAssets modalH wallet actInfList assets =
                             , textAlign center
                             ]
                         ]
-                        [ spinner bigTextSize grayStr
+                        [ bouncingBalls bigTextSize grayStr
                         , div
                             [ css [ marginTop (px 10) ] ]
                             [ textDiv "Loading your pixels, hang on..."

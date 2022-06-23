@@ -390,7 +390,16 @@ iconHighlight i =
 
 
 
--- Loading Spinner
+-- Loading
+
+
+bouncingBalls : Float -> String -> Html msg
+bouncingBalls size color =
+    let
+        config =
+            { defaultConfig | color = "#" ++ color, size = size }
+    in
+    fromUnstyled <| render BouncingBalls config On
 
 
 spinner : Float -> String -> Html msg
@@ -399,7 +408,7 @@ spinner size color =
         config =
             { defaultConfig | color = "#" ++ color, size = size }
     in
-    fromUnstyled <| render BouncingBalls config On
+    fromUnstyled <| render Spinner config On
 
 
 
@@ -807,20 +816,12 @@ scrollBarWidth =
     10
 
 
-globalStyle : AppMode -> List (Html msg)
-globalStyle appmode =
+globalStyle : List (Html msg)
+globalStyle =
     -- set bgcolor / set font / disable user-select / scrollbar style
     let
         bgcolor =
-            case appmode of
-                Loading ->
-                    bggray
-
-                Realtime ->
-                    bggray
-
-                Playback _ ->
-                    secondary
+            bggray
 
         fontface =
             Css.Global.typeSelector "@font-face"

@@ -12,12 +12,12 @@ import Model exposing (Notification(..))
 import Msg exposing (Msg(..))
 import View.Common
     exposing
-        ( highlightColor1
+        ( bouncingBalls
+        , highlightColor1
         , normalTextSize
         , phantomDiv
         , red
         , secondary
-        , spinner
         , white
         , whiteStr
         )
@@ -84,7 +84,7 @@ notifView msg bgColor loadingSpinner refresh =
         ]
         [ div attrs <|
             if loadingSpinner then
-                [ spinner normalTextSize whiteStr
+                [ bouncingBalls normalTextSize whiteStr
                 , span [] [ text msg ]
                 ]
 

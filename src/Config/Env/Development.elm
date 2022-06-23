@@ -1,32 +1,32 @@
 module Config.Env.Development exposing (env)
 
 import Config.Env.Util exposing (Env, toContracts)
-import Config.Network.Ganache as Net
+import Config.Network.Mumbai as Net
 
 
 rpcSocketAddress : String
 rpcSocketAddress =
-    "ws://127.0.0.1:8545"
+    "wss://polygon-mumbai.g.alchemy.com/v2/nz51PqwGNiZ4QUniU4fej3n1bqsIqOfC"
 
 
 erc20 : String
 erc20 =
-    "0xeb6814043dc2184b0b321f6de995bf11bdbcc5b8"
+    "0x8bF1Fe40e5aD4f9ddD986ee6D53F2ABED326A52d"
 
 
 space : String
 space =
-    "0x410e494c14b75c371198d78dbb8e629bdf318e54"
+    "0x68f02A0552e6B9010F34680746cd17E9F98fEC65"
 
 
 registry : String
 registry =
-    "0x70bf60048d634173e29ceda160c0b4300bdba973"
+    "0xe4DD2a5500C95ba86Ce1289dE5c35a383C6A9794"
 
 
 snapper : String
 snapper =
-    "0xaad1d62d70995d8781ec78be717d7b48aa76fc1b"
+    "0xc92c2944fe36ee4ddf7d160338ce2ef8c342c4ed"
 
 
 env : Env
@@ -39,7 +39,8 @@ env =
     , rpcSocketAddress = rpcSocketAddress
     , rpcProvider = Net.rpcProvider
     , polyscanEndpoint = "https://mumbai.polygonscan.com/"
-    , snapshotUriPrefix = "https://d35rfwwq3facyl.cloudfront.net/"
-    , playbackWindow = 30000
+    , snapshotUriPrefix = "https://d1gykh5008m3d7.cloudfront.net/"
+    , playbackWindow = 30
+    , genesisSnapshotCid = "QmXPbeNeQGgYbm7zK9Gd9cziVeJHdSk9f8VtNTo25Ec3wi"
     , debug = True
     }

@@ -28,22 +28,22 @@ view m =
                 m.cellPos
 
         basicViews =
-            globalStyle m.mode
-                ++ [ lazy2 Notif.viewNotif m.winSize m.notif
+            globalStyle
+                ++ [ lazy7 Sidebar.viewSidebar
+                        ( m.mode, m.sidebarMode, m.playback )
+                        m.winSize
+                        m.wallet
+                        m.acts
+                        m.assets
+                        m.sidebarInfLists
+                        m.taxInfo
+                   , lazy2 Notif.viewNotif m.winSize m.notif
                    , lazy3 Canvas.viewHoverHighlight m.dragging m.canvas m.cellPos
                    , Sponsor.viewSponsor
                    ]
 
         infoViews =
-            [ lazy7 Sidebar.viewSidebar
-                ( m.mode, m.sidebarMode, m.playback )
-                m.winSize
-                m.wallet
-                m.acts
-                m.assets
-                m.sidebarInfLists
-                m.taxInfo
-            , lazy2 Canvas.viewSelectHighlight m.canvas m.selectCell
+            [ lazy2 Canvas.viewSelectHighlight m.canvas m.selectCell
             , lazy2 Canvas.viewQueuedHighlights m.queue m.canvas
             , lazy7 Cell.viewSelectCell
                 m.cellModalMode
@@ -69,7 +69,10 @@ view m =
                 Realtime ->
                     realtimeViews
 
-                Playback _ ->
+                PlaybackLoading ->
+                    playbackViews
+
+                Playback ->
                     playbackViews
     in
     -- We use this :: trick to make sure two canvases can be captured by Js

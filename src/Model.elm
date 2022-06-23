@@ -135,7 +135,8 @@ type alias Model =
 type AppMode
     = Loading
     | Realtime
-    | Playback PB.Playback
+    | PlaybackLoading
+    | Playback
 
 
 type MiniMapMode

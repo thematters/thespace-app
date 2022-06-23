@@ -183,6 +183,16 @@ async function tick(timestamp) {
     window.requestAnimationFrame(tick)
 }
 
+function LoadImageToTmpContext(image) {
+    const tmpcvs = document.createElement('canvas')
+    const tmpctx = tmpcvs.getContext('2d')
+    tmpctx.canvas.width = mapW
+    tmpctx.canvas.height = mapH
+    tmpctx.imageSmoothingEnabled = false
+    tmpctx.drawImage(image, 0, 0, mapW, mapH)
+    return tmpctx
+}
+
 
 // render command handler
 async function render(cmd) {
@@ -204,18 +214,12 @@ async function render(cmd) {
             img.crossOrigin = "Anonymous"
             img.src = args[24]
             img.onload = () => {
-                const tmpcvs = document.createElement('canvas')
-                const tmpctx = tmpcvs.getContext('2d')
-                tmpctx.canvas.width = mW
-                tmpctx.canvas.height = mH
-                tmpctx.imageSmoothingEnabled = false
-                tmpctx.drawImage(img, 0, 0, mW, mH)
-                mapImageData = tmpctx.getImageData(0, 0, mW, mH)
+                const tmpctx = LoadImageToTmpContext(img)
+                mapImageData = tmpctx.getImageData(0, 0, mapW, mapH)
                 mapData = new Uint8ClampedArray(mapImageData.data)
                 mapImageData.data.set(mapData)
-                tmpcvs.remove()
+                tmpctx.canvas.remove()
                 app.ports.canvasIn.send("initedMapSnapshot")
-
             }
             break
 
@@ -271,35 +275,47 @@ async function render(cmd) {
 
         // init playback
         case "pbInit":
+            console.log("imgUrl", args[1])
             const size = mapW * mapH * 4
             backupMapData = new Uint8ClampedArray(mapData)
             playbackMapData = new Uint8ClampedArray(size)
-            initPlaybackMapDataToBlankMap()
-            blankMapData = new Uint8ClampedArray(playbackMapData)
-            app.ports.canvasIn.send("pbInited")
+            let pbImg = new Image()
+            pbImg.crossOrigin = "Anonymous"
+            pbImg.src = args[1]
+            pbImg.onload = async () => {
+                const tmpctx = LoadImageToTmpContext(pbImg)
+                mapImageData = tmpctx.getImageData(0, 0, mapW, mapH)
+                playbackMapData = new Uint8ClampedArray(mapImageData.data)
+                mapImageData.data.set(playbackMapData)
+                tmpctx.canvas.remove()
+                await asyncUpdateMapBitmap()
+                playingBack = true
+                mapRegenInterval = speed1X
+                app.ports.canvasIn.send("pbInited")
+            }
             break
 
         // start playback
-        case "pbStart":
-            if (!playingBack) {
-                mapImageData.data.set(playbackMapData)
-                await asyncUpdateMapBitmap()
-                playingBack = true
-                if (mapRegenInterval === speedNormal) {
-                    mapRegenInterval = speed1X
-                }
-                redraw()
-            }
-            app.ports.canvasIn.send("tick")
-            break
+        // case "pbStart":
+            // if (!playingBack) {
+            //     mapImageData.data.set(playbackMapData)
+            //     await asyncUpdateMapBitmap()
+            //     playingBack = true
+            //     if (mapRegenInterval === speedNormal) {
+            //         mapRegenInterval = speed1X
+            //     }
+            //     redraw()
+            // }
+            // app.ports.canvasIn.send("tick")
+            // break
 
         // skip to start of playback then start again
-        case "pbStartAgain":
-            playbackMapData = new Uint8ClampedArray(blankMapData)
-            mapImageData.data.set(playbackMapData)
-            mapNeedRegen = true
-            app.ports.canvasIn.send("tick")
-            break
+        // case "pbStartAgain":
+        //     playbackMapData = new Uint8ClampedArray(blankMapData)
+        //     mapImageData.data.set(playbackMapData)
+        //     mapNeedRegen = true
+        //     app.ports.canvasIn.send("tick")
+        //     break
 
         // forward playback
         case "pbForward":
@@ -326,14 +342,14 @@ async function render(cmd) {
             break
 
         // skip to start of playback
-        case "pbSkipToStart":
-            skipToStart()
-            break
+        // case "pbSkipToStart":
+        //     skipToStart()
+        //     break
 
         // skip to end of playback
-        case "pbSkipToEnd":
-            skipToEnd()
-            break
+        // case "pbSkipToEnd":
+        //     skipToEnd()
+        //     break
 
         // end playback
         case "pbEnd":

@@ -716,22 +716,62 @@ update msg model =
                 Realtime ->
                     ( model, Cmd.none )
 
-                Playback pb ->
+                PlaybackLoading ->
                     --( m, C.endPlayback pb )
+                    ( { model
+                        | mode = Realtime
+                        , sidebarMode =
+                            responsiveSiebarMode model.winSize model.sidebarMode
+                        , miniMapMode = responsiveMiniMapMode model.winSize
+                      }
+                    , Cmd.none
+                    )
+
+                Playback ->
+                    --( m, C.endPlayback pb )
+                    ( { model
+                        | mode = Realtime
+                        , sidebarMode =
+                            responsiveSiebarMode model.winSize model.sidebarMode
+                        , miniMapMode = responsiveMiniMapMode model.winSize
+                      }
+                    , Cmd.none
+                    )
+
+        AppModeChange PlaybackLoading ->
+            case model.mode of
+                Realtime ->
+                    case model.playback of
+                        PB.Loading _ ->
+                            ( model, Cmd.none )
+
+                        PB.Ready { snapshot } ->
+                            ( { model
+                                | mode = PlaybackLoading
+                                , miniMapMode = CollapsedMiniMap
+                              }
+                            , C.initPlayback <| cidToSnapshotUri snapshot
+                            )
+
+                _ ->
                     ( model, Cmd.none )
 
-        --AppModeChange PlaybackLoading ->
-        --    ( { model | mode = PlaybackLoading, miniMapMode = CollapsedMiniMap }
-        --    , Rpc.getColorHistory
-        --    )
-        AppModeChange (Playback pb) ->
-            ( { model | mode = Playback pb }, Cmd.none )
+        AppModeChange Playback ->
+            case model.mode of
+                PlaybackLoading ->
+                    ( { model
+                        | mode = Playback
+                        , playback = PB.start model.playback
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         -- Playback
         DeltaRecieved jsonData ->
             let
-                --_ =
-                --    Debug.log "DeltaRecieved" jsonData
                 ( newPlayback, action ) =
                     case jsonData of
                         Ok data ->
@@ -742,11 +782,11 @@ update msg model =
             in
             ( { model | playback = newPlayback }
             , case action of
-                PB.None ->
-                    Cmd.none
-
                 PB.LoadMore cid ->
                     Rpc.getDeltas [ cid ]
+
+                _ ->
+                    Cmd.none
             )
 
         PlaybackStart ->
@@ -773,7 +813,10 @@ update msg model =
             --            )
             --in
             --playbackHandlerHelper model handler
-            ( model, Cmd.none )
+            --( model, Cmd.none )
+            ( { model | playback = PB.play model.playback |> PB.step }
+            , C.forward <| PB.getStep model.playback
+            )
 
         PlaybackTick ->
             --let
@@ -809,7 +852,10 @@ update msg model =
             --            )
             --in
             --playbackHandlerHelper model handler
-            ( model, Cmd.none )
+            --( model, Cmd.none )
+            ( { model | playback = PB.step model.playback }
+            , C.forward <| PB.getStep model.playback
+            )
 
         PlaybackSkipToStart ->
             --let
@@ -855,9 +901,9 @@ update msg model =
             --        ( { model | mode = Playback newConfig }, Cmd.none )
             --in
             --playbackHandlerHelper model handler
-            ( model, Cmd.none )
+            ( { model | playback = PB.pause model.playback }, Cmd.none )
 
-        PlaybackSpeedChange ->
+        PlaybackCircleSpeed ->
             --let
             --    handler config =
             --        let
@@ -871,7 +917,7 @@ update msg model =
             --        )
             --in
             --playbackHandlerHelper model handler
-            ( model, Cmd.none )
+            ( { model | playback = PB.speedUp model.playback }, Cmd.none )
 
         PlaybackSlide currentString ->
             --let

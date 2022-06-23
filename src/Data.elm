@@ -322,6 +322,11 @@ dec i =
     i - 1
 
 
+sum : List Int -> Int
+sum =
+    List.foldl (+) 0
+
+
 roundFloat : Float -> Float
 roundFloat x =
     x |> round |> toFloat

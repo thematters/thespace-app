@@ -315,9 +315,9 @@ redrawMiniMap =
     "redrawmm" |> send
 
 
-initPlayback : Cmd msg
-initPlayback =
-    "pbInit" |> send
+initPlayback : String -> Cmd msg
+initPlayback playbackSnapshotUri =
+    "pbInit," ++ playbackSnapshotUri |> send
 
 
 startPlayback : Cmd msg
@@ -330,17 +330,23 @@ startPlaybackAgain =
     "pbStartAgain" |> send
 
 
-forwardCommand : List PB.ColorChange -> String
+forwardCommand : List PB.BlockInfoColorChange -> String
 forwardCommand colorChanges =
     let
         one change =
-            --String.fromInt change.idx ++ "," ++ change.new
-            String.fromInt change.index ++ "," ++ String.fromInt change.color
+            let
+                idx =
+                    String.fromInt <| dec change.index
+
+                cId =
+                    String.fromInt <| dec <| safeColorId change.color
+            in
+            idx ++ "," ++ cId
     in
     "pbForward," ++ String.join "," (List.map one colorChanges)
 
 
-forward : List PB.ColorChange -> Cmd msg
+forward : List PB.BlockInfoColorChange -> Cmd msg
 forward colorChanges =
     -- pbForward,<i1>,<cc1>,<i2>,<cc2>...
     forwardCommand colorChanges |> send
@@ -418,15 +424,10 @@ handleAckMessages model =
 
                 "pbInited" ->
                     case model.mode of
-                        --PlaybackLoading ->
-                        --    AppModeChange Playback
-                        Loading ->
-                            NoOp
+                        PlaybackLoading ->
+                            AppModeChange Playback
 
-                        Realtime ->
-                            NoOp
-
-                        Playback _ ->
+                        _ ->
                             NoOp
 
                 "tick" ->

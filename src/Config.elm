@@ -362,6 +362,11 @@ debug =
     env.debug
 
 
+genesisSnapshotCid : String
+genesisSnapshotCid =
+    env.genesisSnapshotCid
+
+
 tokenSign : String
 tokenSign =
     "$SPACE"

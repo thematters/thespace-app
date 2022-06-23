@@ -41,5 +41,6 @@ env =
     , polyscanEndpoint = "https://polygonscan.com/"
     , snapshotUriPrefix = "https://d23t3m1s3moj89.cloudfront.net/"
     , playbackWindow = 300
+    , genesisSnapshotCid = "Qmf9D3TQQ8twZ9igqoaFtQHshp2JoA54xVi3RGU6Q7uAoE"
     , debug = True
     }
