@@ -21,6 +21,8 @@ function onSend(ws) {
             console.log("Out:", msg)
             if (typeof msg.id !== "undefined") console.time(msg.id)
         }
+        if (msg.method == "eth_call") msg.params.push("latest")
+        console.log("onSend", msg)
         ws.send(JSON.stringify(msg))
     }
 }
