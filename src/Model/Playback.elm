@@ -188,7 +188,7 @@ addDeltaData deltaData pb =
                         |> Dict.values
                         |> List.map deltaDataLength
                         |> sum
-                        |> (<) playbackWindow
+                        |> (<=) playbackWindow
 
                 newDeltas =
                     if List.member deltaData.cid cids then
@@ -396,7 +396,7 @@ finishLoading { cids, deltas, events } =
 
 needRefresh : LoadedData -> Bool
 needRefresh =
-    .events >> List.length >> (>) 0
+    .events >> List.length >> (<) 0
 
 
 refreshLoaded : LoadedData -> LoadedData
