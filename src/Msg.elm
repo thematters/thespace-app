@@ -29,13 +29,13 @@ type Msg
     = NoOp
       -- App Modes
     | AppModeChange AppMode
-    | PlaybackCircleSpeed
+    | PlaybackCanvasReady
+    | PlaybackReverseTimeline (List String)
+    | PlaybackPlay
     | PlaybackPause
-    | PlaybackStart
-    | PlaybackTick
-    | PlaybackSkipToStart
-    | PlaybackSkipToEnd
-    | PlaybackSlide String
+    | PlaybackSlide Int
+    | PlaybackTicked
+    | PlaybackCircleSpeed
       -- MiniMap Modes
     | MiniMapModeChange MiniMapMode
       -- Map / MiniMap Ops

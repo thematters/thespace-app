@@ -30,15 +30,18 @@ view m =
         basicViews =
             globalStyle
                 ++ [ lazy7 Sidebar.viewSidebar
-                        ( m.mode, m.sidebarMode, m.playback )
-                        m.winSize
+                        ( m.mode, m.sidebarMode, m.winSize )
+                        m.playback
                         m.wallet
                         m.acts
                         m.assets
                         m.sidebarInfLists
                         m.taxInfo
                    , lazy2 Notif.viewNotif m.winSize m.notif
-                   , lazy3 Canvas.viewHoverHighlight m.dragging m.canvas m.cellPos
+                   , lazy3 Canvas.viewHoverHighlight
+                        m.dragging
+                        m.canvas
+                        m.cellPos
                    , Sponsor.viewSponsor
                    ]
 
@@ -68,9 +71,6 @@ view m =
 
                 Realtime ->
                     realtimeViews
-
-                PlaybackLoading ->
-                    playbackViews
 
                 Playback ->
                     playbackViews

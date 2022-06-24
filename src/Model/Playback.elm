@@ -4,6 +4,7 @@ module Model.Playback exposing
     , ColorChangeDeltaBlock
     , ColorChangeDeltaData
     , LoadingAction(..)
+    , PlayAction(..)
     , Playback(..)
     , Speed(..)
     , Status(..)
@@ -11,21 +12,37 @@ module Model.Playback exposing
     , addColorEvent
     , addColorEvents
     , addDeltaData
-    , getStep
     , init
     , initDeltaCids
+    , initPlayback
+    , jumpTo
     , maxProgress
     , pause
     , play
+    , readyToSlide
+    , readyToStart
+    , setCanvasReady
+    , setReverseTimeline
     , speedToString
     , speedUp
     , start
-    , step
+    , tick
     )
 
 import Array exposing (Array)
 import Config exposing (genesisSnapshotCid, playbackWindow)
-import Data exposing (BlockNumber, Cid, ColorEvent, ColorId, Index, dec, sum)
+import Data
+    exposing
+        ( BlockNumber
+        , Cid
+        , ColorEvent
+        , ColorId
+        , Index
+        , dec
+        , inc
+        , safeColorId
+        , sum
+        )
 import Dict exposing (Dict)
 import Time exposing (Posix)
 
@@ -42,7 +59,19 @@ type Playback
 type alias LoadingData =
     { cids : List Cid
     , deltas : LoadingDataDeltas
-    , events : List ColorEvent
+    , events : Events
+    }
+
+
+type alias LoadedData =
+    { status : Status
+    , canvasReady : Bool
+    , timelineReady : Bool
+    , speed : Speed
+    , snapshot : Cid
+    , timeline : Timeline
+    , reverseTimeline : Array ColorChange
+    , events : Events
     }
 
 
@@ -50,14 +79,8 @@ type alias LoadingDataDeltas =
     Dict Cid ColorChangeDeltaData
 
 
-type alias LoadedData =
-    { status : Status
-    , speed : Speed
-    , snapshot : Cid
-    , timeline : Timeline
-    , reverseTimeline : Timeline
-    , events : List ColorEvent
-    }
+type alias Events =
+    Array ColorEvent
 
 
 type Status
@@ -116,7 +139,14 @@ type alias BlockInfoColorChange =
 
 type LoadingAction
     = LoadMore Cid
-    | None
+    | Standby
+
+
+type PlayAction
+    = PlayAgain
+    | Forward (List BlockInfoColorChange)
+    | Rewind (List ColorChange)
+    | NoAction
 
 
 
@@ -128,7 +158,15 @@ init =
     Loading
         { cids = []
         , deltas = Dict.empty
-        , events = []
+        , events = Array.empty
+        }
+
+
+initPlayback =
+    Loading
+        { cids = []
+        , deltas = Dict.empty
+        , events = Array.empty
         }
 
 
@@ -146,7 +184,7 @@ addColorEvent : ColorEvent -> Playback -> Playback
 addColorEvent cevt pb =
     let
         addOne c data =
-            { data | events = c :: data.events }
+            { data | events = Array.push c data.events }
     in
     case pb of
         Loading loadingData ->
@@ -159,22 +197,25 @@ addColorEvent cevt pb =
 addColorEvents : List ColorEvent -> Playback -> Playback
 addColorEvents cevts pb =
     let
-        addMany cs data =
-            { data | events = data.events ++ List.reverse cs }
+        cs =
+            Array.fromList cevts
+
+        addMany xs data =
+            { data | events = Array.append data.events xs }
     in
     case pb of
         Loading loadingData ->
-            Loading <| addMany cevts loadingData
+            Loading <| addMany cs loadingData
 
         Ready loadedData ->
-            Ready <| addMany cevts loadedData
+            Ready <| addMany cs loadedData
 
 
 addDeltaData : ColorChangeDeltaData -> Playback -> ( Playback, LoadingAction )
 addDeltaData deltaData pb =
     case pb of
         Ready _ ->
-            ( pb, None )
+            ( pb, Standby )
 
         Loading ({ cids, deltas } as loadingData) ->
             let
@@ -212,10 +253,72 @@ addDeltaData deltaData pb =
                         )
 
                     else
-                        ( Loading newData, None )
+                        ( Loading newData, Standby )
 
                 _ ->
-                    ( Ready <| finishLoading newData, None )
+                    ( Ready <| finishLoading newData, Standby )
+
+
+setCanvasReady : Playback -> Playback
+setCanvasReady pb =
+    case pb of
+        Ready data ->
+            Ready { data | canvasReady = True }
+
+        _ ->
+            pb
+
+
+setReverseTimeline : List String -> Playback -> Playback
+setReverseTimeline colorIds pb =
+    let
+        revTimeline tl cs =
+            List.map2
+                (\c { index } ->
+                    let
+                        cId =
+                            c
+                                |> String.toInt
+                                |> Maybe.withDefault 0
+                                |> inc
+                                |> safeColorId
+                    in
+                    { index = index, color = cId }
+                )
+                colorIds
+                (Array.toList tl)
+                |> Array.fromList
+    in
+    case pb of
+        Ready ({ timeline } as data) ->
+            Ready
+                { data
+                    | timelineReady = True
+                    , reverseTimeline = revTimeline timeline colorIds
+                }
+
+        _ ->
+            pb
+
+
+readyToStart : Playback -> Bool
+readyToStart pb =
+    case pb of
+        Ready { canvasReady, timeline } ->
+            canvasReady && Array.length timeline > 0
+
+        _ ->
+            False
+
+
+readyToSlide : Playback -> Bool
+readyToSlide pb =
+    case pb of
+        Ready { timelineReady } ->
+            timelineReady
+
+        _ ->
+            False
 
 
 start : Playback -> Playback
@@ -236,19 +339,29 @@ start pb =
             pb
 
 
-play : Playback -> Playback
+play : Playback -> ( Playback, PlayAction )
 play pb =
     case pb of
-        Ready ({ status } as data) ->
+        Ready ({ status, timeline } as data) ->
             case status of
                 Paused i ->
-                    Ready { data | status = Playing i }
+                    if i == maxProgress timeline then
+                        ( Ready { data | status = Playing 0 }, PlayAgain )
+
+                    else
+                        let
+                            ( newProgress, action ) =
+                                stepForward i timeline
+                        in
+                        ( Ready { data | status = Playing newProgress }
+                        , action
+                        )
 
                 _ ->
-                    pb
+                    ( pb, NoAction )
 
         _ ->
-            pb
+            ( pb, NoAction )
 
 
 pause : Playback -> Playback
@@ -266,42 +379,31 @@ pause pb =
             pb
 
 
-step : Playback -> Playback
-step pb =
+tick : Playback -> ( Playback, PlayAction )
+tick pb =
     case pb of
         Ready ({ status, timeline } as data) ->
             case status of
                 Playing i ->
-                    let
-                        stepLen =
-                            Array.length timeline // 120
-                    in
-                    Ready { data | status = Playing <| i + stepLen }
+                    if i == maxProgress timeline then
+                        ( Ready { data | status = Paused i }
+                        , NoAction
+                        )
+
+                    else
+                        let
+                            ( newProgress, action ) =
+                                stepForward i timeline
+                        in
+                        ( Ready { data | status = Playing newProgress }
+                        , action
+                        )
 
                 Paused _ ->
-                    pb
+                    ( pb, NoAction )
 
         _ ->
-            pb
-
-
-getStep : Playback -> List BlockInfoColorChange
-getStep pb =
-    case pb of
-        Ready ({ status, timeline } as data) ->
-            case status of
-                Playing i ->
-                    let
-                        stepLen =
-                            Array.length timeline // 120
-                    in
-                    Array.slice i (i + stepLen) timeline |> Array.toList
-
-                Paused _ ->
-                    []
-
-        _ ->
-            []
+            ( pb, NoAction )
 
 
 speedUp : Playback -> Playback
@@ -314,53 +416,49 @@ speedUp pb =
             pb
 
 
-jumpTo : Int -> Playback -> Playback
+jumpTo : Int -> Playback -> ( Playback, PlayAction )
 jumpTo i pb =
     case pb of
-        Ready ({ status, timeline } as data) ->
+        Ready ({ status, timeline, reverseTimeline } as data) ->
             let
                 prog =
                     i |> safeProgress timeline
+
+                ( curr, newPlayback ) =
+                    case status of
+                        Playing x ->
+                            ( x, Ready { data | status = Paused prog } )
+
+                        Paused x ->
+                            ( x, Ready { data | status = Paused prog } )
             in
-            case status of
-                Playing _ ->
-                    Ready { data | status = Playing prog }
+            ( newPlayback
+            , case compare i curr of
+                GT ->
+                    Array.slice curr i timeline
+                        |> Array.toList
+                        |> Forward
 
-                Paused _ ->
-                    Ready { data | status = Paused prog }
+                EQ ->
+                    NoAction
 
-        _ ->
-            pb
-
-
-skipToStart : Playback -> Playback
-skipToStart pb =
-    case pb of
-        Ready ({ status } as data) ->
-            case status of
-                Playing i ->
-                    Ready { data | status = Paused 0 }
-
-                _ ->
-                    pb
+                LT ->
+                    Array.slice i curr reverseTimeline
+                        |> Array.toList
+                        |> Rewind
+            )
 
         _ ->
-            pb
+            ( pb, NoAction )
 
 
-skipToEnd : Playback -> Playback
-skipToEnd pb =
-    case pb of
-        Ready ({ status, timeline } as data) ->
-            case status of
-                Playing i ->
-                    Ready { data | status = Paused <| maxProgress timeline }
 
-                _ ->
-                    pb
+-- Helpers
 
-        _ ->
-            pb
+
+stepLenght : Int
+stepLenght =
+    120
 
 
 maxProgress : Timeline -> Int
@@ -373,13 +471,11 @@ safeProgress =
     maxProgress >> clamp 0
 
 
-
--- Helpers
-
-
 finishLoading : LoadingData -> LoadedData
 finishLoading { cids, deltas, events } =
     { status = Paused 0
+    , canvasReady = False
+    , timelineReady = False
     , speed = OneX
     , snapshot =
         cids
@@ -390,13 +486,13 @@ finishLoading { cids, deltas, events } =
             |> Maybe.withDefault genesisSnapshotCid
     , timeline = loadingDataToTimeline deltas events
     , reverseTimeline = Array.empty
-    , events = []
+    , events = Array.empty
     }
 
 
 needRefresh : LoadedData -> Bool
 needRefresh =
-    .events >> List.length >> (<) 0
+    .events >> Array.length >> (<) 0
 
 
 refreshLoaded : LoadedData -> LoadedData
@@ -405,13 +501,13 @@ refreshLoaded ({ timeline, events } as oldData) =
         | status = Paused 0
         , speed = OneX
         , timeline = updateTimeline events timeline
-        , events = []
+        , events = Array.empty
     }
 
 
-accColorEvents : List ColorEvent -> LoadedDataBlocks -> LoadedDataBlocks
+accColorEvents : Events -> LoadedDataBlocks -> LoadedDataBlocks
 accColorEvents events blocks =
-    events |> List.foldr accColorEvent blocks
+    events |> Array.foldr accColorEvent blocks
 
 
 accColorEvent : ColorEvent -> LoadedDataBlocks -> LoadedDataBlocks
@@ -434,12 +530,12 @@ accColorEvent { blockNumber, index, color } blocks =
     blocks |> Dict.update blockNumber update
 
 
-loadingDataToTimeline : LoadingDataDeltas -> List ColorEvent -> Timeline
+loadingDataToTimeline : LoadingDataDeltas -> Events -> Timeline
 loadingDataToTimeline deltas events =
     blocksFromLoadingData deltas events |> blocksToTimeline
 
 
-blocksFromLoadingData : LoadingDataDeltas -> List ColorEvent -> LoadedDataBlocks
+blocksFromLoadingData : LoadingDataDeltas -> Events -> LoadedDataBlocks
 blocksFromLoadingData deltas events =
     let
         blockList =
@@ -460,17 +556,13 @@ blocksToTimeline blocks =
         |> Dict.values
         |> List.sortBy .blockNumber
         |> List.map toInfoColorChangeList
-        |> List.foldl (++) []
+        |> List.foldr (++) []
         |> Array.fromList
 
 
-updateTimeline : List ColorEvent -> Timeline -> Timeline
+updateTimeline : Events -> Timeline -> Timeline
 updateTimeline events oldTimeline =
-    events
-        |> List.reverse
-        |> List.map eventToInfoColorChange
-        |> Array.fromList
-        |> Array.append oldTimeline
+    events |> Array.map eventToInfoColorChange |> Array.append oldTimeline
 
 
 toInfoColorChange : BlockNumber -> ColorChange -> BlockInfoColorChange
@@ -498,17 +590,23 @@ eventToInfoColorChange { blockNumber, index, color } =
     { blockNumber = blockNumber, index = index, color = color }
 
 
-speedToString : Speed -> String
-speedToString spd =
-    case spd of
-        OneX ->
-            "1X"
+stepForward : Int -> Timeline -> ( Int, PlayAction )
+stepForward i timeline =
+    let
+        historyLen =
+            Array.length timeline
 
-        TwoX ->
-            "2X"
+        stepLen =
+            historyLen // stepLenght |> max stepLenght
 
-        FourX ->
-            "4X"
+        newProgress =
+            i + stepLen |> safeProgress timeline
+
+        cs =
+            Array.slice i (i + stepLen) timeline
+                |> Array.toList
+    in
+    ( newProgress, Forward cs )
 
 
 nextSpeed : Speed -> Speed
@@ -522,3 +620,16 @@ nextSpeed spd =
 
         FourX ->
             OneX
+
+
+speedToString : Speed -> String
+speedToString spd =
+    case spd of
+        OneX ->
+            "1X"
+
+        TwoX ->
+            "2X"
+
+        FourX ->
+            "4X"

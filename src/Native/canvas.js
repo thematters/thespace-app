@@ -36,9 +36,9 @@ if (!('createImageBitmap' in window)) {
 
 // speed settings in ms
 const speedNormal = 1000
-const speed1X = 500
-const speed2X = 250
-const speed4X = 125
+const speed1X = 1000 / 8
+const speed2X = speed1X / 2
+const speed4X = speed2X / 2
 
 // states /////////////////////////////////////////////////////////////////////
 
@@ -50,17 +50,17 @@ let // elm app ref
     // map/minimap canvas context ref
     ctx, mmctx,
     // color table
-    RGBAs
+    RGBs,
+    // reverse color table: colorCode -> RAB
+    reverseRGBs
 
 // map RGBA value array and objects for drawing on canvas
 let // realtime map RGBA array
     mapData,
+    // starting map data for playback
+    playbackInitMapData,
     // playback map RGBA array
     playbackMapData,
-    // backup RGBA array for faster skip to start in playback
-    blankMapData,
-    // backup RGBA array for faster skip to end in playback
-    backupMapData,
     // imageData object for creating the final image (DOM API matching)
     mapImageData,
     // the actual image object drawn to canvas by drawImage API
@@ -72,6 +72,8 @@ let lastTick
 let mapNeedRedraw = false
 // map image need re-generated?
 let mapNeedRegen = false
+// playback inited?
+let playbackInited = false
 // currently in playback mode?
 let playingBack = false
 // image re-generation interval
@@ -97,7 +99,14 @@ function updateContext(w, h) {
     ctx.imageSmoothingEnabled = false
 }
 
-function cc2rgb(colorcode) { return RGBAs[colorcode >> 0] }
+function cc2rgb(colorcode) { return RGBs[colorcode >> 0] }
+
+function swapImageData(data, i, rgb) {
+    const idx = i * 4
+    const old = data[idx] << 16 | data[idx + 1] << 8 | data[idx + 2]
+    updateImageData(data, i, rgb)
+    return old
+}
 
 function updateImageData(data, i, rgb) {
     const idx = i * 4
@@ -116,17 +125,6 @@ function initPlaybackMapDataToBlankMap() {
     for (let i = 0; i < mapW * mapH; i++)
         { updateImageData(playbackMapData, i, 0xffffff) }
 }
-
-function skip(reverse) {
-    const skipToBackup = reverse ? backupMapData : blankMapData
-    playbackMapData = new Uint8ClampedArray(skipToBackup)
-    mapImageData.data.set(playbackMapData)
-    mapNeedRegen = true
-}
-
-function skipToStart() { skip(false) }
-
-function skipToEnd() { skip(true) }
 
 function changeSpeed(spd) {
     switch (spd) {
@@ -183,7 +181,7 @@ async function tick(timestamp) {
     window.requestAnimationFrame(tick)
 }
 
-function LoadImageToTmpContext(image) {
+function LoadImageT(image) {
     const tmpcvs = document.createElement('canvas')
     const tmpctx = tmpcvs.getContext('2d')
     tmpctx.canvas.width = mapW
@@ -193,7 +191,6 @@ function LoadImageToTmpContext(image) {
     return tmpctx
 }
 
-
 // render command handler
 async function render(cmd) {
     const args = cmd.split(",")
@@ -201,7 +198,8 @@ async function render(cmd) {
 
         // init realtime: map snapshot
         case "initMapSnapshot":
-            RGBAs = args.slice(8, 25).map(i => `0x${i}` >> 0)
+            RGBs = args.slice(8, 25).map(i => `0x${i}` >> 0)
+            reverseRGBs = RGBs.reduce((acc, v, i) => (acc[v] = i, acc), {})
             var [dx, dy, zoom, wW, wH, mW, mH] = parseArgs(args.slice(1, 8))
             mapW = mW
             mapH = mH
@@ -214,7 +212,7 @@ async function render(cmd) {
             img.crossOrigin = "Anonymous"
             img.src = args[24]
             img.onload = () => {
-                const tmpctx = LoadImageToTmpContext(img)
+                const tmpctx = LoadImageT(img)
                 mapImageData = tmpctx.getImageData(0, 0, mapW, mapH)
                 mapData = new Uint8ClampedArray(mapImageData.data)
                 mapImageData.data.set(mapData)
@@ -275,47 +273,42 @@ async function render(cmd) {
 
         // init playback
         case "pbInit":
-            console.log("imgUrl", args[1])
-            const size = mapW * mapH * 4
-            backupMapData = new Uint8ClampedArray(mapData)
-            playbackMapData = new Uint8ClampedArray(size)
             let pbImg = new Image()
             pbImg.crossOrigin = "Anonymous"
             pbImg.src = args[1]
             pbImg.onload = async () => {
-                const tmpctx = LoadImageToTmpContext(pbImg)
-                mapImageData = tmpctx.getImageData(0, 0, mapW, mapH)
-                playbackMapData = new Uint8ClampedArray(mapImageData.data)
-                mapImageData.data.set(playbackMapData)
+                const tmpctx = LoadImageT(pbImg)
+                const size = mapW * mapH * 4
+                const playbackInitMapImageData = tmpctx.getImageData(0, 0, mapW, mapH)
+                playbackInitMapData = 
+                    new Uint8ClampedArray(playbackInitMapImageData.data)
                 tmpctx.canvas.remove()
-                await asyncUpdateMapBitmap()
-                playingBack = true
-                mapRegenInterval = speed1X
+                playbackInited = true
                 app.ports.canvasIn.send("pbInited")
             }
             break
 
         // start playback
-        // case "pbStart":
-            // if (!playingBack) {
-            //     mapImageData.data.set(playbackMapData)
-            //     await asyncUpdateMapBitmap()
-            //     playingBack = true
-            //     if (mapRegenInterval === speedNormal) {
-            //         mapRegenInterval = speed1X
-            //     }
-            //     redraw()
-            // }
-            // app.ports.canvasIn.send("tick")
-            // break
+        case "pbStart":
+            playbackMapData = new Uint8ClampedArray(playbackInitMapData)
+            mapImageData.data.set(playbackInitMapData)
+            await asyncUpdateMapBitmap()
+            if (mapRegenInterval === speedNormal) {
+                mapRegenInterval = speed1X
+            }
+            redraw()
+            playingBack = true
+            app.ports.canvasIn.send("pbStarted")
+            break
 
-        // skip to start of playback then start again
-        // case "pbStartAgain":
-        //     playbackMapData = new Uint8ClampedArray(blankMapData)
-        //     mapImageData.data.set(playbackMapData)
-        //     mapNeedRegen = true
-        //     app.ports.canvasIn.send("tick")
-        //     break
+        // jump to start and start playback
+        case "pbPlayAgain":
+            playbackMapData = new Uint8ClampedArray(playbackInitMapData)
+            mapImageData.data.set(playbackInitMapData)
+            await asyncUpdateMapBitmap()
+            redraw()
+            app.ports.canvasIn.send("tick")
+            break
 
         // forward playback
         case "pbForward":
@@ -330,6 +323,7 @@ async function render(cmd) {
         case "pbRewind":
             args.reverse()
             for (let i = 0; i < args.length - 1; i += 2) {
+            // for (let i = 1; i < args.length - 1; i += 2) {
                 updateImageData(playbackMapData, args[i+1]>>0, cc2rgb(args[i]))
             }
             mapImageData.data.set(playbackMapData)
@@ -341,16 +335,6 @@ async function render(cmd) {
             changeSpeed(args[1]>>0)
             break
 
-        // skip to start of playback
-        // case "pbSkipToStart":
-        //     skipToStart()
-        //     break
-
-        // skip to end of playback
-        // case "pbSkipToEnd":
-        //     skipToEnd()
-        //     break
-
         // end playback
         case "pbEnd":
             mapImageData.data.set(mapData)
@@ -358,6 +342,21 @@ async function render(cmd) {
             mapRegenInterval = speedNormal
             redraw()
             playingBack = false
+            break
+
+        // build reverse timeline
+        case "reverse":
+            let reverseTimeline = []
+            if (playbackInited) {
+                let tmpMapData = new Uint8ClampedArray(playbackInitMapData)
+                let reverseTimeline = []
+                for (let i = 1; i < args.length; i += 2) {
+                    var old = swapImageData(
+                        tmpMapData, args[i]>>0, cc2rgb(args[i+1]))
+                    reverseTimeline.push(old == 0 ? 0 : reverseRGBs[old])
+                }
+                app.ports.canvasIn.send(reverseTimeline.join(","))
+            }
             break
 
         default:

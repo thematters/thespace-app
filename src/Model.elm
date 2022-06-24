@@ -135,7 +135,6 @@ type alias Model =
 type AppMode
     = Loading
     | Realtime
-    | PlaybackLoading
     | Playback
 
 

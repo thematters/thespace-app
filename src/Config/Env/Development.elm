@@ -40,7 +40,7 @@ env =
     , rpcProvider = Net.rpcProvider
     , polyscanEndpoint = "https://mumbai.polygonscan.com/"
     , snapshotUriPrefix = "https://d1gykh5008m3d7.cloudfront.net/"
-    , playbackWindow = 30
+    , playbackWindow = 10000
     , genesisSnapshotCid = "QmXPbeNeQGgYbm7zK9Gd9cziVeJHdSk9f8VtNTo25Ec3wi"
     , debug = True
     }

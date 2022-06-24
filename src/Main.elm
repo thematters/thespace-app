@@ -716,55 +716,40 @@ update msg model =
                 Realtime ->
                     ( model, Cmd.none )
 
-                PlaybackLoading ->
-                    --( m, C.endPlayback pb )
-                    ( { model
-                        | mode = Realtime
-                        , sidebarMode =
-                            responsiveSiebarMode model.winSize model.sidebarMode
-                        , miniMapMode = responsiveMiniMapMode model.winSize
-                      }
-                    , Cmd.none
-                    )
-
                 Playback ->
-                    --( m, C.endPlayback pb )
                     ( { model
                         | mode = Realtime
                         , sidebarMode =
                             responsiveSiebarMode model.winSize model.sidebarMode
                         , miniMapMode = responsiveMiniMapMode model.winSize
                       }
-                    , Cmd.none
+                    , C.endPlayback
                     )
 
-        AppModeChange PlaybackLoading ->
+        AppModeChange Playback ->
             case model.mode of
                 Realtime ->
                     case model.playback of
                         PB.Loading _ ->
                             ( model, Cmd.none )
 
-                        PB.Ready { snapshot } ->
+                        PB.Ready { snapshot, timeline } ->
+                            let
+                                newPlayback =
+                                    PB.start model.playback
+                            in
                             ( { model
-                                | mode = PlaybackLoading
+                                | mode = Playback
                                 , miniMapMode = CollapsedMiniMap
+                                , playback = newPlayback
                               }
-                            , C.initPlayback <| cidToSnapshotUri snapshot
+                            , case newPlayback of
+                                PB.Ready data ->
+                                    C.playbackReverseTimeline data.timeline
+
+                                _ ->
+                                    Cmd.none
                             )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        AppModeChange Playback ->
-            case model.mode of
-                PlaybackLoading ->
-                    ( { model
-                        | mode = Playback
-                        , playback = PB.start model.playback
-                      }
-                    , Cmd.none
-                    )
 
                 _ ->
                     ( model, Cmd.none )
@@ -778,187 +763,103 @@ update msg model =
                             model.playback |> PB.addDeltaData data
 
                         Err _ ->
-                            ( model.playback, PB.None )
+                            ( model.playback, PB.Standby )
             in
             ( { model | playback = newPlayback }
-            , case action of
-                PB.LoadMore cid ->
+            , case ( newPlayback, action ) of
+                ( PB.Ready { snapshot }, _ ) ->
+                    C.initPlayback <| cidToSnapshotUri snapshot
+
+                ( _, PB.LoadMore cid ) ->
                     Rpc.getDeltas [ cid ]
 
                 _ ->
                     Cmd.none
             )
 
-        PlaybackStart ->
-            --let
-            --    handler config =
-            --        if config.current == Array.length model.colorHistory then
-            --            let
-            --                newConfig =
-            --                    { config
-            --                        | current = 1
-            --                        , status = Playing
-            --                    }
-            --            in
-            --            ( { model | mode = Playback newConfig }
-            --            , C.startPlaybackAgain
-            --            )
-            --        else
-            --            let
-            --                newConfig =
-            --                    { config | status = Playing }
-            --            in
-            --            ( { model | mode = Playback newConfig }
-            --            , C.startPlayback
-            --            )
-            --in
-            --playbackHandlerHelper model handler
-            --( model, Cmd.none )
-            ( { model | playback = PB.play model.playback |> PB.step }
-            , C.forward <| PB.getStep model.playback
+        PlaybackCanvasReady ->
+            ( { model | playback = PB.setCanvasReady model.playback }
+            , Cmd.none
             )
 
-        PlaybackTick ->
-            --let
-            --    handler config =
-            --        if config.status == Paused then
-            --            ( model, Cmd.none )
-            --        else
-            --            let
-            --                historyLength =
-            --                    Array.length model.colorHistory
-            --                step =
-            --                    historyLength // playbackTicks |> max 1
-            --                newCurrent =
-            --                    config.current + step |> min historyLength
-            --                newStatus =
-            --                    if newCurrent == historyLength then
-            --                        Paused
-            --                    else
-            --                        Playing
-            --                newConfig =
-            --                    { config
-            --                        | current = newCurrent
-            --                        , status = newStatus
-            --                    }
-            --                slice =
-            --                    Array.slice
-            --                        config.current
-            --                        newCurrent
-            --                        model.colorHistory
-            --            in
-            --            ( { model | mode = Playback newConfig }
-            --            , C.forward slice
-            --            )
-            --in
-            --playbackHandlerHelper model handler
-            --( model, Cmd.none )
-            ( { model | playback = PB.step model.playback }
-            , C.forward <| PB.getStep model.playback
+        PlaybackReverseTimeline colorStrIds ->
+            ( { model
+                | playback = model.playback |> PB.setReverseTimeline colorStrIds
+              }
+            , C.startPlayback
             )
 
-        PlaybackSkipToStart ->
-            --let
-            --    handler config =
-            --        let
-            --            newConfig =
-            --                { config
-            --                    | current = 1
-            --                    , status = Paused
-            --                }
-            --        in
-            --        ( { model | mode = Playback newConfig }
-            --        , C.playbackSkipToStart
-            --        )
-            --in
-            --playbackHandlerHelper model handler
-            ( model, Cmd.none )
-
-        PlaybackSkipToEnd ->
-            --let
-            --    handler config =
-            --        let
-            --            newConfig =
-            --                { config
-            --                    | current = config.to
-            --                    , status = Paused
-            --                }
-            --        in
-            --        ( { model | mode = Playback newConfig }
-            --        , C.playbackSkipToEnd
-            --        )
-            --in
-            --playbackHandlerHelper model handler
-            ( model, Cmd.none )
+        PlaybackPlay ->
+            let
+                ( newPlayback, action ) =
+                    model.playback |> PB.play
+            in
+            ( { model | playback = newPlayback }
+            , handlePlaybackPlayAction action
+            )
 
         PlaybackPause ->
-            --let
-            --    handler config =
-            --        let
-            --            newConfig =
-            --                { config | status = Paused }
-            --        in
-            --        ( { model | mode = Playback newConfig }, Cmd.none )
-            --in
-            --playbackHandlerHelper model handler
             ( { model | playback = PB.pause model.playback }, Cmd.none )
 
-        PlaybackCircleSpeed ->
-            --let
-            --    handler config =
-            --        let
-            --            newSpeed =
-            --                nextSpeed config.speed
-            --            newConfig =
-            --                { config | speed = newSpeed }
-            --        in
-            --        ( { model | mode = Playback newConfig }
-            --        , C.playbackChangeSpeed newSpeed
-            --        )
-            --in
-            --playbackHandlerHelper model handler
-            ( { model | playback = PB.speedUp model.playback }, Cmd.none )
+        PlaybackTicked ->
+            case model.playback of
+                PB.Loading _ ->
+                    ( model, Cmd.none )
 
-        PlaybackSlide currentString ->
-            --let
-            --    handler config =
-            --        case String.toInt currentString of
-            --            Nothing ->
-            --                ( model, Cmd.none )
-            --            Just current ->
-            --                let
-            --                    newConfig =
-            --                        { config
-            --                            | current = current
-            --                            , status = Paused
-            --                        }
-            --                    m =
-            --                        { model | mode = Playback newConfig }
-            --                in
-            --                if current == config.current then
-            --                    ( m, Cmd.none )
-            --                else if current > config.current then
-            --                    ( m
-            --                    , C.forward <|
-            --                        Array.slice
-            --                            config.current
-            --                            current
-            --                            model.colorHistory
-            --                    )
-            --                else
-            --                    ( m
-            --                    , C.rewind <|
-            --                        Array.slice
-            --                            (current + 1)
-            --                            (config.current + 1)
-            --                            model.colorHistory
-            --                    )
-            --in
-            --playbackHandlerHelper model handler
-            ( model, Cmd.none )
+                PB.Ready { status } ->
+                    case status of
+                        PB.Playing _ ->
+                            let
+                                ( newPlayback, action ) =
+                                    model.playback |> PB.tick
+                            in
+                            ( { model | playback = newPlayback }
+                            , handlePlaybackPlayAction action
+                            )
+
+                        _ ->
+                            ( model, Cmd.none )
+
+        PlaybackSlide i ->
+            let
+                ( newPlayback, action ) =
+                    model.playback |> PB.jumpTo i
+            in
+            ( { model | playback = newPlayback }
+            , handlePlaybackPlayAction action
+            )
+
+        PlaybackCircleSpeed ->
+            let
+                newPlayback =
+                    PB.speedUp model.playback
+            in
+            ( { model | playback = newPlayback }
+            , case newPlayback of
+                PB.Loading _ ->
+                    Cmd.none
+
+                PB.Ready { speed } ->
+                    C.playbackChangeSpeed speed
+            )
 
         NoOp ->
             ( model, Cmd.none )
+
+
+handlePlaybackPlayAction step =
+    case step of
+        PB.Forward cs ->
+            C.forward cs
+
+        PB.Rewind cs ->
+            C.rewind cs
+
+        PB.PlayAgain ->
+            C.startPlaybackAgain
+
+        PB.NoAction ->
+            Cmd.none
 
 
 
@@ -983,19 +884,6 @@ removeSelectCell model =
 
 
 
---type alias PlaybackHander msg =
---    PlaybackConfig -> ( Model, Cmd msg )
---playbackHandlerHelper : Model -> PlaybackHander msg -> ( Model, Cmd msg )
---playbackHandlerHelper model playbackHandler =
---    case model.mode of
---        RealtimeLoading ->
---            ( model, Cmd.none )
---        Realtime ->
---            ( model, Cmd.none )
---        PlaybackLoading ->
---            ( model, Cmd.none )
---        Playback config ->
---            playbackHandler config
 -- User Interaction Handlers
 
 
