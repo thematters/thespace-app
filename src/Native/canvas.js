@@ -16,17 +16,17 @@
 // ployfill for createImageBitmap on Safari ///////////////////////////////////
 
 if (!('createImageBitmap' in window)) {
-    window.createImageBitmap = async function (data) {
-        return new Promise((resolve,reject) => {
+    window.createImageBitmap = async function(data) {
+        return new Promise((resolve, reject) => {
             let dataURL
             const canvas = document.createElement('canvas')
             const ctx = canvas.getContext('2d')
             canvas.width = data.width
             canvas.height = data.height
-            ctx.putImageData(data,0,0)
+            ctx.putImageData(data, 0, 0)
             dataURL = canvas.toDataURL()
             const img = document.createElement('img')
-            img.addEventListener('load',function () { resolve(this) })
+            img.addEventListener('load', function() { resolve(this) })
             img.src = dataURL
         })
     }
@@ -72,8 +72,6 @@ let lastTick
 let mapNeedRedraw = false
 // map image need re-generated?
 let mapNeedRegen = false
-// playback inited?
-let playbackInited = false
 // currently in playback mode?
 let playingBack = false
 // image re-generation interval
@@ -81,25 +79,19 @@ let mapRegenInterval = speedNormal
 
 // Helpers ////////////////////////////////////////////////////////////////////
 
-function parseArgs(xs) { return Array.from(xs.values()).map(i => i >> 0) }
-
-function setTranslate(t, dx, dy) {
-    t.e = dx
-    t.f = dy
-}
-
-function setScale(t, s) {
-    t.a = s
-    t.d = s
-}
-
-function updateContext(w, h) {
-    ctx.canvas.width = w
-    ctx.canvas.height = h
-    ctx.imageSmoothingEnabled = false
-}
+function has(x) { return typeof x !== "undefined" }
 
 function cc2rgb(colorcode) { return RGBs[colorcode >> 0] }
+
+function parseArgs(xs) { return Array.from(xs.values()).map(i => i >> 0) }
+
+function updateImageData(data, i, rgb) {
+    const idx = i * 4
+    data[idx] = rgb >> 16 & 0xFF        // R
+    data[idx + 1] = rgb >> 8 & 0xFF     // G
+    data[idx + 2] = rgb & 0xFF          // B
+    data[idx + 3] = 255                 // A
+}
 
 function swapImageData(data, i, rgb) {
     const idx = i * 4
@@ -108,22 +100,14 @@ function swapImageData(data, i, rgb) {
     return old
 }
 
-function updateImageData(data, i, rgb) {
-    const idx = i * 4
-    data[idx    ] = rgb >> 16 & 0xFF  // R
-    data[idx + 1] = rgb >> 8  & 0xFF  // G
-    data[idx + 2] = rgb       & 0xFF  // B
-    data[idx + 3] = 255               // A
-}
+function setTranslate(t, dx, dy) { t.e = dx; t.f = dy }
 
-function initImageDataFromColorIdString(s) {
-    for (let i = 0; i < s.length; i++)
-        { updateImageData(mapData, i, cc2rgb(s.charAt(i))) }
-}
+function setScale(t, s) { t.a = s; t.d = s }
 
-function initPlaybackMapDataToBlankMap() {
-    for (let i = 0; i < mapW * mapH; i++)
-        { updateImageData(playbackMapData, i, 0xffffff) }
+function updateContext(ctx, w, h) {
+    ctx.canvas.width = w
+    ctx.canvas.height = h
+    ctx.imageSmoothingEnabled = false
 }
 
 function changeSpeed(spd) {
@@ -161,11 +145,30 @@ async function asyncUpdateMapBitmap() {
     mapNeedRedraw = true
 }
 
-// render loop
-// all redraw happens here unless force redraw commands invoked
+// init a off-screen canvas context
+function offScreenContext() {
+    const osctx = document.createElement('canvas').getContext('2d')
+    updateContext(osctx, mapW, mapH)
+    return osctx
+}
+
+// load image from url to off screen context and call loading callback
+function loadImage(imgUrl, callback) {
+    let img = new Image()
+    img.crossOrigin = "Anonymous"
+    img.src = imgUrl
+    img.onload = () => {
+        let osctx = offScreenContext()
+        osctx.drawImage(img, 0, 0, mapW, mapH)
+        callback(osctx)
+        osctx.canvas.remove()
+    }
+}
+
+// render loop: all redraw happens here unless force redraw commands invoked
 // we ONLY clear mapNeedRedraw/mapNeedRegen flags here
 async function tick(timestamp) {
-    if (lastTick === undefined) { lastTick = timestamp }
+    if (lastTick === undefined) lastTick = timestamp
     if (mapNeedRegen && timestamp - lastTick > mapRegenInterval) {
         await asyncUpdateMapBitmap()
         redraw()
@@ -181,23 +184,13 @@ async function tick(timestamp) {
     window.requestAnimationFrame(tick)
 }
 
-function LoadImageT(image) {
-    const tmpcvs = document.createElement('canvas')
-    const tmpctx = tmpcvs.getContext('2d')
-    tmpctx.canvas.width = mapW
-    tmpctx.canvas.height = mapH
-    tmpctx.imageSmoothingEnabled = false
-    tmpctx.drawImage(image, 0, 0, mapW, mapH)
-    return tmpctx
-}
-
 // render command handler
 async function render(cmd) {
     const args = cmd.split(",")
     switch (args[0]) {
 
-        // init realtime: map snapshot
         case "initMapSnapshot":
+            // init realtime: map snapshot
             RGBs = args.slice(8, 25).map(i => `0x${i}` >> 0)
             reverseRGBs = RGBs.reduce((acc, v, i) => (acc[v] = i, acc), {})
             var [dx, dy, zoom, wW, wH, mW, mH] = parseArgs(args.slice(1, 8))
@@ -206,58 +199,49 @@ async function render(cmd) {
             var trans = ctx.getTransform()
             setTranslate(trans, dx, dy)
             setScale(trans, zoom)
-            updateContext(wW, wH)
+            updateContext(ctx, wW, wH)
             ctx.setTransform(trans)
-            let img = new Image()
-            img.crossOrigin = "Anonymous"
-            img.src = args[24]
-            img.onload = () => {
-                const tmpctx = LoadImageT(img)
-                mapImageData = tmpctx.getImageData(0, 0, mapW, mapH)
-                mapData = new Uint8ClampedArray(mapImageData.data)
-                mapImageData.data.set(mapData)
-                tmpctx.canvas.remove()
-                app.ports.canvasIn.send("initedMapSnapshot")
-            }
+            loadImage(
+                args[24],
+                (osctx) => {
+                    mapImageData = osctx.getImageData(0, 0, mapW, mapH)
+                    mapData = new Uint8ClampedArray(mapImageData.data)
+                    mapImageData.data.set(mapData)
+                    app.ports.canvasIn.send("initedMapSnapshot")
+                })
             break
 
-        // init realtime: latest color changes after map snapshot
         case "initLatestColors":
-            if ( args.length > 1 ) {
+            // init realtime: latest color changes after map snapshot
+            if (args.length > 1) {
                 for (let i = 1; i < args.length; i += 2) {
-                    updateImageData(mapData, args[i]>>0, cc2rgb(args[i+1]))
+                    updateImageData(mapData, args[i] >> 0, cc2rgb(args[i + 1]))
                 }
             }
             mapImageData.data.set(mapData)
-            asyncUpdateMapBitmap()
-                .then(
-                    () => {
-                        app.ports.canvasIn.send("inited")
-                        window.requestAnimationFrame(tick)
-                    }
-                )
-            break            
+            asyncUpdateMapBitmap().then(
+                () => {
+                    app.ports.canvasIn.send("inited")
+                    window.requestAnimationFrame(tick)
+                }
+            )
+            break
 
-        // trans: move / scale / reset
         case "trans":
+            // trans: move / scale / reset
             var [dx, dy, zoom, wW, wH] = parseArgs(args.slice(1, 6))
             var trans = ctx.getTransform()
-            // move
             setTranslate(trans, dx, dy)
-            // scale
-            if (typeof zoom !== "undefined")
-                setScale(trans, zoom)
-            // reset
-            if (typeof wW !== "undefined" && typeof wH !== "undefined")
-                updateContext(wW, wH)
+            if (has(zoom)) setScale(trans, zoom)
+            if (has(wW) && has(wH)) updateContext(ctx, wW, wH)
             ctx.setTransform(trans)
             mapNeedRedraw = true
             break
 
-        // update realtime
         case "update":
+            // update realtime
             for (let i = 1; i < args.length; i += 2) {
-                updateImageData(mapData, args[i]>>0, cc2rgb(args[i+1]))
+                updateImageData(mapData, args[i] >> 0, cc2rgb(args[i + 1]))
             }
             if (!playingBack) {
                 mapImageData.data.set(mapData)
@@ -265,44 +249,36 @@ async function render(cmd) {
             }
             break
 
-        // force redraw minimap
         case "redrawmm":
+            // force redraw minimap
             mmctx.drawImage(mapBitmap, 0, 0,
                 mmctx.canvas.width, mmctx.canvas.height)
             break
 
-        // init playback
         case "pbInit":
-            let pbImg = new Image()
-            pbImg.crossOrigin = "Anonymous"
-            pbImg.src = args[1]
-            pbImg.onload = async () => {
-                const tmpctx = LoadImageT(pbImg)
-                const size = mapW * mapH * 4
-                const playbackInitMapImageData = tmpctx.getImageData(0, 0, mapW, mapH)
-                playbackInitMapData = 
-                    new Uint8ClampedArray(playbackInitMapImageData.data)
-                tmpctx.canvas.remove()
-                playbackInited = true
-                app.ports.canvasIn.send("pbInited")
-            }
+            // init playback
+            loadImage(
+                args[1],
+                (osctx) => {
+                    const tmp = osctx.getImageData(0, 0, mapW, mapH)
+                    playbackInitMapData = new Uint8ClampedArray(tmp.data)
+                    app.ports.canvasIn.send("pbInited")
+                })
             break
 
-        // start playback
         case "pbStart":
+            // start playback
             playbackMapData = new Uint8ClampedArray(playbackInitMapData)
             mapImageData.data.set(playbackInitMapData)
             await asyncUpdateMapBitmap()
-            if (mapRegenInterval === speedNormal) {
-                mapRegenInterval = speed1X
-            }
+            if (mapRegenInterval === speedNormal) mapRegenInterval = speed1X
             redraw()
             playingBack = true
             app.ports.canvasIn.send("pbStarted")
             break
 
-        // jump to start and start playback
         case "pbPlayAgain":
+            // jump to start and start playback
             playbackMapData = new Uint8ClampedArray(playbackInitMapData)
             mapImageData.data.set(playbackInitMapData)
             await asyncUpdateMapBitmap()
@@ -310,33 +286,34 @@ async function render(cmd) {
             app.ports.canvasIn.send("tick")
             break
 
-        // forward playback
         case "pbForward":
+            // forward playback
             for (let i = 1; i < args.length; i += 2) {
-                updateImageData(playbackMapData, args[i]>>0, cc2rgb(args[i+1]))
+                updateImageData(
+                    playbackMapData, args[i] >> 0, cc2rgb(args[i + 1]))
             }
             mapImageData.data.set(playbackMapData)
             mapNeedRegen = true
             break
 
-        // rewind playback
+            // rewind playback
         case "pbRewind":
             args.reverse()
             for (let i = 0; i < args.length - 1; i += 2) {
-            // for (let i = 1; i < args.length - 1; i += 2) {
-                updateImageData(playbackMapData, args[i+1]>>0, cc2rgb(args[i]))
+                updateImageData(
+                    playbackMapData, args[i + 1] >> 0, cc2rgb(args[i]))
             }
             mapImageData.data.set(playbackMapData)
             mapNeedRegen = true
             break
 
-        // change playback speed
         case "pbSpeed":
-            changeSpeed(args[1]>>0)
+            // change playback speed
+            changeSpeed(args[1] >> 0)
             break
 
-        // end playback
         case "pbEnd":
+            // end playback
             mapImageData.data.set(mapData)
             await asyncUpdateMapBitmap()
             mapRegenInterval = speedNormal
@@ -344,19 +321,16 @@ async function render(cmd) {
             playingBack = false
             break
 
-        // build reverse timeline
         case "reverse":
-            let reverseTimeline = []
-            if (playbackInited) {
-                let tmpMapData = new Uint8ClampedArray(playbackInitMapData)
-                let reverseTimeline = []
-                for (let i = 1; i < args.length; i += 2) {
-                    var old = swapImageData(
-                        tmpMapData, args[i]>>0, cc2rgb(args[i+1]))
-                    reverseTimeline.push(old == 0 ? 0 : reverseRGBs[old])
-                }
-                app.ports.canvasIn.send(reverseTimeline.join(","))
+            // build reverse timeline
+            const reverseTimeline = []
+            const tmpMapData = new Uint8ClampedArray(playbackInitMapData)
+            for (let i = 1; i < args.length; i += 2) {
+                var old = swapImageData(
+                    tmpMapData, args[i] >> 0, cc2rgb(args[i + 1]))
+                reverseTimeline.push(old == 0 ? 0 : reverseRGBs[old])
             }
+            app.ports.canvasIn.send(reverseTimeline.join(","))
             break
 
         default:
