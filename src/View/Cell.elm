@@ -17,12 +17,12 @@ import Config
         , tokenSign
         , zeroPrice
         )
+import Contract.Space exposing (Pixel)
 import Css exposing (..)
 import Data
     exposing
         ( Cell
         , ColorId
-        , Pixel
         , Position
         , Price
         , RpcErrorKind(..)

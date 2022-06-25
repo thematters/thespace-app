@@ -87,33 +87,6 @@ type alias Transform =
     }
 
 
-type alias Pixel =
-    { index : Index
-    , owner : Address
-    , price : Price
-    , color : ColorId
-    , ubi : Price
-    , tax : Price
-    , lastTaxBK : BlockNumber
-    , ownerBalance : Maybe Price
-    , ownerAllowance : Maybe Price
-    }
-
-
-type alias PixelBrief =
-    { index : Index
-    , price : Price
-    , color : ColorId
-    }
-
-
-type alias PixelAsset =
-    { cell : Cell
-    , color : ColorId
-    , price : Price
-    }
-
-
 type alias ColorId =
     Int
 
@@ -172,14 +145,6 @@ type AbbrType
     = AbbrShort
     | AbbrNormal
     | AbbrLong
-
-
-type alias OwnPixelsResultPage =
-    { total : Int
-    , limit : Int
-    , offset : Int
-    , pixels : List Pixel
-    }
 
 
 type TokenInfoKind
@@ -348,24 +313,6 @@ centerCell canvas winSize =
             winSize
     in
     posToCell canvas { x = toFloat w / 2, y = toFloat h / 2 }
-
-
-fakePixel : Index -> Pixel
-fakePixel i =
-    let
-        b0 =
-            BigInt.fromInt 0
-    in
-    { index = i
-    , owner = zeroAddress
-    , price = b0
-    , color = 0
-    , ubi = b0
-    , tax = b0
-    , lastTaxBK = 0
-    , ownerBalance = Nothing
-    , ownerAllowance = Nothing
-    }
 
 
 

@@ -9,6 +9,8 @@ module Contract.Space exposing
     ( ColorEvent
     , GetPixel
     , GetPixelsByOwner
+    , OwnPixelsResultPage
+    , Pixel
     , PriceEvent
     , TaxEvent
     , TransferEvent
@@ -60,6 +62,18 @@ type alias TreasuryShare =
     BigInt
 
 
+type alias BlockNumber =
+    Int
+
+
+type alias Index =
+    Int
+
+
+type alias ColorId =
+    Int
+
+
 type alias ColorEvent =
     { blockNumber : Int
     , index : Int
@@ -103,6 +117,27 @@ type alias UbiEvent =
     , collector : Address
     , amount : BigInt
     , removed : Bool
+    }
+
+
+type alias Pixel =
+    { index : Index
+    , owner : Address
+    , price : Price
+    , color : ColorId
+    , ubi : Price
+    , tax : Price
+    , lastTaxBK : BlockNumber
+    , ownerBalance : Maybe Price
+    , ownerAllowance : Maybe Price
+    }
+
+
+type alias OwnPixelsResultPage =
+    { total : Int
+    , limit : Int
+    , offset : Int
+    , pixels : List Pixel
     }
 
 

@@ -60,8 +60,6 @@ import Data
     exposing
         ( BlockNumber
         , Index
-        , OwnPixelsResultPage
-        , Pixel
         , Price
         , RpcErrorData
         , RpcErrorKind(..)
@@ -140,8 +138,8 @@ type RpcResult
     | RpcTaxEvent Space.TaxEvent
     | RpcUbiEvent Space.UbiEvent
     | RpcRegistryTransferEvent Registry.RegistryTransferEvent
-    | RpcPixel Pixel
-    | RpcOwnPixels OwnPixelsResultPage
+    | RpcPixel Space.Pixel
+    | RpcOwnPixels Space.OwnPixelsResultPage
     | RpcTokenInfo TokenInfo
     | RpcDeltaCids (List Snapper.Cid)
     | RpcError RpcErrorData
@@ -191,7 +189,7 @@ type MessageId
 -- Helpers
 
 
-toPixel : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixel -> Pixel
+toPixel : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixel -> Space.Pixel
 toPixel taxRate bkNum pixelBigInt =
     let
         lastTaxBK =
@@ -217,7 +215,7 @@ toPixel taxRate bkNum pixelBigInt =
     }
 
 
-toPixelsByOwner : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixelsByOwner -> OwnPixelsResultPage
+toPixelsByOwner : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixelsByOwner -> Space.OwnPixelsResultPage
 toPixelsByOwner taxRate bkNum pixelsByOwner =
     { total = pixelsByOwner.total |> unsafeBigIntToInt
     , limit = pixelsByOwner.limit |> unsafeBigIntToInt

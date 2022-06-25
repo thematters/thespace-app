@@ -13,13 +13,13 @@ import Config
         , zeroPrice
         )
 import Contract.ERC20 exposing (allowance)
+import Contract.Space exposing (Pixel)
 import Css exposing (..)
 import Data
     exposing
         ( Activity(..)
         , ColorId
         , Index
-        , Pixel
         , Price
         , RpcErrorKind(..)
         , Size

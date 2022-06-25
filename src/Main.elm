@@ -5,6 +5,7 @@ import Browser
 import Browser.Events as E
 import Canvas as C
 import Config exposing (..)
+import Contract.Space exposing (OwnPixelsResultPage)
 import Data exposing (..)
 import Dict
 import Eth.Types exposing (Address)

@@ -2,7 +2,7 @@ module Model exposing (..)
 
 import Array exposing (Array)
 import Config exposing (minPrice, minZoom, miniMapHeight, sidebarWidth)
-import Contract.Space exposing (ColorEvent, TreasuryShare)
+import Contract.Space exposing (ColorEvent, Pixel, TreasuryShare)
 import Data exposing (..)
 import Dict exposing (Dict)
 import InfiniteList

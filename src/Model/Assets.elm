@@ -34,6 +34,8 @@ import Config exposing (getOwnPixelLimit, zeroPrice)
 import Contract.Space
     exposing
         ( ColorEvent
+        , OwnPixelsResultPage
+        , Pixel
         , PriceEvent
         , TransferEvent
         , UbiEvent
@@ -42,8 +44,6 @@ import Data
     exposing
         ( BlockNumber
         , Index
-        , OwnPixelsResultPage
-        , Pixel
         , Price
         , SortOrder(..)
         , dec
