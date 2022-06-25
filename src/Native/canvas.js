@@ -26,7 +26,7 @@ if (!('createImageBitmap' in window)) {
             ctx.putImageData(data, 0, 0)
             dataURL = canvas.toDataURL()
             const img = document.createElement('img')
-            img.addEventListener('load', function() { resolve(this) })
+            img.onload = () => resolve(this)
             img.src = dataURL
         })
     }
@@ -45,16 +45,21 @@ const speed4X = speed2X / 2
 // passed by Elm app canvas port registration and realtime init command
 let // elm app ref
     app,
+    // map canvas context ref
+    ctx,
+    // minimap canvas context ref
+    mmctx
+
+// passed by realtime init command
+let
     // map width/height
     mapW, mapH,
-    // map/minimap canvas context ref
-    ctx, mmctx,
-    // color table
+    // color table: colorId (zero based) -> RGB
     RGBs,
-    // reverse color table: colorCode -> RAB
+    // reverse color table: RGB -> colorId (for reverse time generation)
     reverseRGBs
 
-// map RGBA value array and objects for drawing on canvas
+// map RGBA value array and objects for drawing to canvas
 let // realtime map RGBA array
     mapData,
     // starting map data for playback
@@ -63,7 +68,7 @@ let // realtime map RGBA array
     playbackMapData,
     // imageData object for creating the final image (DOM API matching)
     mapImageData,
-    // the actual image object drawn to canvas by drawImage API
+    // the actual image object drawn to canvas drawImage (DOM API matching)
     mapBitmap
 
 // last tick timestamp
@@ -251,8 +256,8 @@ async function render(cmd) {
 
         case "redrawmm":
             // force redraw minimap
-            mmctx.drawImage(mapBitmap, 0, 0,
-                mmctx.canvas.width, mmctx.canvas.height)
+            mmctx.drawImage(
+                mapBitmap, 0, 0, mmctx.canvas.width, mmctx.canvas.height)
             break
 
         case "pbInit":
