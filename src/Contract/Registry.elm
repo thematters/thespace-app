@@ -1,8 +1,18 @@
-module Contract.Registry exposing (transferDecoder)
+module Contract.Registry exposing (RegistryTransferEvent, transferDecoder)
 
-import Data exposing (RegistryTransferEvent, bigIntAsIntDecoder)
+import Contract.Util exposing (bigIntAsIntDecoder)
 import Eth.Decode as ED
+import Eth.Types exposing (Address)
 import Json.Decode as D
+
+
+type alias RegistryTransferEvent =
+    { blockNumber : Int
+    , from : Address
+    , to : Address
+    , index : Int
+    , removed : Bool
+    }
 
 
 transferDecoder : D.Decoder RegistryTransferEvent

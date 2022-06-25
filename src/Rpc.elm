@@ -1,7 +1,9 @@
 port module Rpc exposing
-    ( approveAllBalance
+    ( RpcResult(..)
+    , approveAllBalance
     , collectUbi
     , decodeMessage
+    , defaultRpcErrorCode
     , getAccount
     , getBlockNumber
     , getColorHistory
@@ -53,17 +55,16 @@ import Contract.TheSpace as Space
         , ubiDecoder
         , ubiLogsDecoder
         )
+import Contract.Util exposing (unsafeBigIntToInt)
 import Data
     exposing
         ( BlockNumber
-        , Cid
         , Index
         , OwnPixelsResultPage
         , Pixel
         , Price
         , RpcErrorData
         , RpcErrorKind(..)
-        , RpcResult(..)
         , TaxRate
         , TokenInfo
         , TokenInfoKind(..)
@@ -71,10 +72,8 @@ import Data
         , WalletInfo(..)
         , accTax
         , cidToSnapshotUri
-        , defaultRpcError
         , intToHex
         , safeColorId
-        , unsafeBigIntToInt
         )
 import Env exposing (env)
 import Eth.Decode as ED
@@ -115,6 +114,45 @@ port rpcSocketControl : (String -> msg) -> Sub msg
 
 
 -- Data Types
+
+
+type RpcResult
+    = RpcInitMap Snapper.Snapshot
+    | RpcNewHeadsSubId SubId
+    | RpcColorSubId SubId
+    | RpcPriceSubId SubId
+    | RpcTransferSubId SubId
+    | RpcTaxSubId SubId
+    | RpcUbiSubId SubId
+    | RpcDefaultSubId SubId
+    | RpcNewHead BlockNumber
+    | RpcTaxRate TaxRate
+    | RpcTreasuryShare Space.TreasuryShare
+    | RpcMintTax Price
+    | RpcLatestColorLog (List Space.ColorEvent)
+    | RpcLatestPriceLog (List Space.PriceEvent)
+    | RpcLatestTransferLog (List Space.TransferEvent)
+    | RpcLatestTaxLog (List Space.TaxEvent)
+    | RpcLatestUbiLog (List Space.UbiEvent)
+    | RpcColorEvent Space.ColorEvent
+    | RpcPriceEvent Space.PriceEvent
+    | RpcTransferEvent Space.TransferEvent
+    | RpcTaxEvent Space.TaxEvent
+    | RpcUbiEvent Space.UbiEvent
+    | RpcRegistryTransferEvent Registry.RegistryTransferEvent
+    | RpcPixel Pixel
+    | RpcOwnPixels OwnPixelsResultPage
+    | RpcTokenInfo TokenInfo
+    | RpcDeltaCids (List Snapper.Cid)
+    | RpcError RpcErrorData
+
+
+type alias SubId =
+    Int
+
+
+type alias TreasuryShare =
+    Price
 
 
 type alias RpcCallData =
@@ -202,6 +240,24 @@ toAllowanceTokenInfo addr amt =
     , address = addr
     , amount = amt
     }
+
+
+defaultRpcErrorCode : Int
+defaultRpcErrorCode =
+    -33000
+
+
+defaultRpcErrorData : String -> RpcErrorData
+defaultRpcErrorData msg =
+    { kind = RpcUnknownError -- we may special treat some errors
+    , code = defaultRpcErrorCode
+    , message = msg
+    }
+
+
+defaultRpcError : String -> RpcResult
+defaultRpcError msg =
+    RpcError <| defaultRpcErrorData msg
 
 
 
@@ -915,7 +971,7 @@ switchNetwork rpc =
 -- Http API
 
 
-getDeltas : List Cid -> Cmd Msg
+getDeltas : List Snapper.Cid -> Cmd Msg
 getDeltas cids =
     Cmd.batch <|
         List.map

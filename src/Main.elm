@@ -31,7 +31,7 @@ import Model.Assets
         )
 import Model.Playback as PB
 import Msg exposing (Msg(..))
-import Rpc
+import Rpc exposing (RpcResult(..))
 import View exposing (view)
 
 
@@ -251,7 +251,7 @@ update msg model =
             let
                 err =
                     { kind = RpcUnderPricedError idx
-                    , code = defaultRpcErrorCode -- we dont't care
+                    , code = Rpc.defaultRpcErrorCode -- we dont't care
                     , message = "underpriced" -- only shown in debug env
                     }
 

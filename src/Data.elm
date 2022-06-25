@@ -14,8 +14,16 @@ import Config
         , shiftedColorHexs
         , zeroPrice
         )
+import Contract.Registry exposing (RegistryTransferEvent)
+import Contract.TheSpace
+    exposing
+        ( ColorEvent
+        , PriceEvent
+        , TaxEvent
+        , TransferEvent
+        , UbiEvent
+        )
 import Dict exposing (Dict)
-import Eth.Decode as ED
 import Eth.Defaults exposing (zeroAddress)
 import Eth.Types exposing (Address)
 import Eth.Units exposing (EthUnit(..))
@@ -122,16 +130,8 @@ type alias Price =
     BigInt
 
 
-type alias TreasuryShare =
-    Price
-
-
 type alias TaxRate =
     Price
-
-
-type alias SubId =
-    Int
 
 
 type alias BlockNumber =
@@ -153,61 +153,6 @@ type Activity
     | ActError RpcErrorData
 
 
-type alias ColorEvent =
-    { blockNumber : Int
-    , index : Int
-    , owner : Address
-    , color : Int
-    , removed : Bool
-    }
-
-
-type alias PriceEvent =
-    { blockNumber : Int
-    , index : Int
-    , owner : Address
-    , price : Price
-    , removed : Bool
-    }
-
-
-type alias TransferEvent =
-    { blockNumber : Int
-    , index : Int
-    , from : Address
-    , to : Address
-    , amount : Price
-    , removed : Bool
-    }
-
-
-type alias TaxEvent =
-    { blockNumber : Int
-    , index : Int
-    , payer : Address
-    , amount : BigInt
-    , removed : Bool
-    }
-
-
-type alias UbiEvent =
-    { blockNumber : Int
-    , index : Int
-    , collector : Address
-    , amount : BigInt
-    , removed : Bool
-    }
-
-
-type alias RegistryTransferEvent =
-    { blockNumber : Int
-    , from : Address
-    , to : Address
-    , index : Int
-    , removed : Bool
-    }
-
-
 type WalletInfo
     = DetectingWallet
     | NoWallet
@@ -227,53 +172,6 @@ type AbbrType
     = AbbrShort
     | AbbrNormal
     | AbbrLong
-
-
-type RpcResult
-    = RpcInitMap Snapshot
-    | RpcNewHeadsSubId SubId
-    | RpcColorSubId SubId
-    | RpcPriceSubId SubId
-    | RpcTransferSubId SubId
-    | RpcTaxSubId SubId
-    | RpcUbiSubId SubId
-    | RpcDefaultSubId SubId
-    | RpcNewHead BlockNumber
-    | RpcTaxRate TaxRate
-    | RpcTreasuryShare TreasuryShare
-    | RpcMintTax Price
-    | RpcLatestColorLog (List ColorEvent)
-    | RpcLatestPriceLog (List PriceEvent)
-    | RpcLatestTransferLog (List TransferEvent)
-    | RpcLatestTaxLog (List TaxEvent)
-    | RpcLatestUbiLog (List UbiEvent)
-    | RpcColorEvent ColorEvent
-    | RpcPriceEvent PriceEvent
-    | RpcTransferEvent TransferEvent
-    | RpcTaxEvent TaxEvent
-    | RpcUbiEvent UbiEvent
-    | RpcRegistryTransferEvent RegistryTransferEvent
-    | RpcPixel Pixel
-    | RpcOwnPixels OwnPixelsResultPage
-    | RpcTokenInfo TokenInfo
-    | RpcDeltaCids (List Cid)
-    | RpcError RpcErrorData
-
-
-type alias Cid =
-    String
-
-
-type alias Snapshot =
-    { blockNumber : BlockNumber
-    , cid : Cid
-    }
-
-
-type alias PlaybackDelta =
-    { blockNumber : BlockNumber
-    , cid : Cid
-    }
 
 
 type alias OwnPixelsResultPage =
@@ -399,20 +297,9 @@ posStringNoParen xy =
     (String.fromFloat <| xy.x + 1) ++ "," ++ (String.fromFloat <| xy.y + 1)
 
 
-cellStringNoParen : Cell -> String
-cellStringNoParen xy =
-    (String.fromInt <| xy.x + 1) ++ "," ++ (String.fromInt <| xy.y + 1)
-
-
-posString : Position -> String
-posString xy =
-    "(" ++ posStringNoParen xy ++ ")"
-
-
 cellString : Cell -> String
 cellString xy =
-    --"(" ++ cellStringNoParen xy ++ ")"
-    cellStringNoParen xy
+    (String.fromInt <| xy.x + 1) ++ "," ++ (String.fromInt <| xy.y + 1)
 
 
 validIndex : Int -> Bool
@@ -488,32 +375,6 @@ fakePixel i =
 intToHex : Int -> String
 intToHex i =
     i |> Hex.toString |> String.padLeft 64 '0' |> add0x
-
-
-bigIntToInt : BigInt -> Maybe Int
-bigIntToInt =
-    -- yeah, yeah, I know this is hacky...
-    -- but Web3 is hackier...
-    BigInt.toString >> String.toInt
-
-
-unsafeBigIntToInt : BigInt -> Int
-unsafeBigIntToInt =
-    bigIntToInt >> Maybe.withDefault 0
-
-
-bigIntAsIntDecoder : D.Decoder Int
-bigIntAsIntDecoder =
-    let
-        f bi =
-            case bigIntToInt bi of
-                Nothing ->
-                    D.fail "decode BigInt as Int fail"
-
-                Just i ->
-                    D.succeed i
-    in
-    ED.bigInt |> D.andThen f
 
 
 safePrice : BigInt -> BigInt
@@ -602,7 +463,6 @@ accUbi oldUbi mapSize newTaxAmount =
             mapSize
 
         shares =
-            --BigInt.fromInt 1000000
             BigInt.fromInt <| w * h
 
         shareAmount =
@@ -786,24 +646,6 @@ unsafeColorIdToShiftedHexColor =
 notOnChain : Int -> Bool
 notOnChain chainId =
     chainId /= rpcProvider.chainId
-
-
-defaultRpcErrorCode : Int
-defaultRpcErrorCode =
-    -33000
-
-
-defaultRpcErrorData : String -> RpcErrorData
-defaultRpcErrorData msg =
-    { kind = RpcUnknownError -- we may special treat some errors
-    , code = defaultRpcErrorCode
-    , message = msg
-    }
-
-
-defaultRpcError : String -> RpcResult
-defaultRpcError msg =
-    RpcError <| defaultRpcErrorData msg
 
 
 cidToSnapshotUri : String -> String

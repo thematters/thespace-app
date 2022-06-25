@@ -2,6 +2,7 @@ module Model exposing (..)
 
 import Array exposing (Array)
 import Config exposing (minPrice, minZoom, miniMapHeight, sidebarWidth)
+import Contract.TheSpace exposing (ColorEvent, TreasuryShare)
 import Data exposing (..)
 import Dict exposing (Dict)
 import InfiniteList
@@ -15,6 +16,10 @@ type alias Flags =
     , centerCell : Maybe Cell
     , zoom : Maybe Int
     }
+
+
+type alias SubId =
+    Int
 
 
 initModel : Model

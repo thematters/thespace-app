@@ -31,18 +31,21 @@ module Model.Assets exposing
 import Array exposing (Array)
 import BigInt
 import Config exposing (getOwnPixelLimit, zeroPrice)
+import Contract.TheSpace
+    exposing
+        ( ColorEvent
+        , PriceEvent
+        , TransferEvent
+        , UbiEvent
+        )
 import Data
     exposing
         ( BlockNumber
-        , ColorEvent
         , Index
         , OwnPixelsResultPage
         , Pixel
         , Price
-        , PriceEvent
         , SortOrder(..)
-        , TransferEvent
-        , UbiEvent
         , dec
         , inc
         )

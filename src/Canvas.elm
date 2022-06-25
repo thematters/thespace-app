@@ -32,10 +32,10 @@ import Config
         , minZoom
         , moveClampRatio
         )
+import Contract.TheSpace exposing (ColorEvent)
 import Data
     exposing
         ( Cell
-        , ColorEvent
         , Delta
         , Index
         , Size

@@ -6,18 +6,40 @@
 
 
 module Contract.Snapper exposing
-    ( deltaLogsDecoder
+    ( Cid
+    , Snapshot
+    , deltaLogsDecoder
     , latestSnapshot
     , snapshotDecoder
     )
 
 import BigInt exposing (BigInt)
-import Data exposing (Cid, Snapshot, unsafeBigIntToInt)
+import Contract.Util exposing (unsafeBigIntToInt)
 import Eth.Abi.Decode as AD
 import Eth.Abi.Encode as AE
 import Eth.Types exposing (Address, Call)
 import Json.Decode as D exposing (Decoder)
 import Regex
+
+
+type alias Cid =
+    String
+
+
+type alias BlockNumber =
+    Int
+
+
+type alias Snapshot =
+    { blockNumber : BlockNumber
+    , cid : Cid
+    }
+
+
+type alias PlaybackDelta =
+    { blockNumber : BlockNumber
+    , cid : Cid
+    }
 
 
 type alias LatestSnapshotUgly =

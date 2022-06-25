@@ -6,8 +6,14 @@
 
 
 module Contract.TheSpace exposing
-    ( GetPixel
+    ( ColorEvent
+    , GetPixel
     , GetPixelsByOwner
+    , PriceEvent
+    , TaxEvent
+    , TransferEvent
+    , TreasuryShare
+    , UbiEvent
     , bid
     , colorDecoder
     , colorLogsDecoder
@@ -34,21 +40,70 @@ module Contract.TheSpace exposing
     )
 
 import BigInt exposing (BigInt)
-import Data
-    exposing
-        ( ColorEvent
-        , Price
-        , PriceEvent
-        , TaxEvent
-        , TransferEvent
-        , UbiEvent
-        , bigIntAsIntDecoder
-        )
+import Contract.Util exposing (bigIntAsIntDecoder)
 import Eth.Abi.Decode as AD
 import Eth.Abi.Encode as AE
 import Eth.Decode as ED
 import Eth.Types exposing (Address, Call)
 import Json.Decode as D
+
+
+
+-- Types
+
+
+type alias Price =
+    BigInt
+
+
+type alias TreasuryShare =
+    BigInt
+
+
+type alias ColorEvent =
+    { blockNumber : Int
+    , index : Int
+    , owner : Address
+    , color : Int
+    , removed : Bool
+    }
+
+
+type alias PriceEvent =
+    { blockNumber : Int
+    , index : Int
+    , owner : Address
+    , price : Price
+    , removed : Bool
+    }
+
+
+type alias TransferEvent =
+    { blockNumber : Int
+    , index : Int
+    , from : Address
+    , to : Address
+    , amount : Price
+    , removed : Bool
+    }
+
+
+type alias TaxEvent =
+    { blockNumber : Int
+    , index : Int
+    , payer : Address
+    , amount : BigInt
+    , removed : Bool
+    }
+
+
+type alias UbiEvent =
+    { blockNumber : Int
+    , index : Int
+    , collector : Address
+    , amount : BigInt
+    , removed : Bool
+    }
 
 
 
