@@ -15,7 +15,7 @@ import Config
         , zeroPrice
         )
 import Contract.Registry exposing (RegistryTransferEvent)
-import Contract.TheSpace
+import Contract.Space
     exposing
         ( ColorEvent
         , PriceEvent

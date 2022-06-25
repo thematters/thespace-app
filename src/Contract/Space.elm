@@ -5,7 +5,7 @@
 -}
 
 
-module Contract.TheSpace exposing
+module Contract.Space exposing
     ( ColorEvent
     , GetPixel
     , GetPixelsByOwner

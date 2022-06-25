@@ -42,7 +42,7 @@ import Config.Env.Util exposing (RpcProvider)
 import Contract.ERC20 as ERC20
 import Contract.Registry as Registry
 import Contract.Snapper as Snapper
-import Contract.TheSpace as Space
+import Contract.Space as Space
     exposing
         ( colorDecoder
         , colorLogsDecoder

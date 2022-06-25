@@ -31,7 +31,7 @@ module Model.Assets exposing
 import Array exposing (Array)
 import BigInt
 import Config exposing (getOwnPixelLimit, zeroPrice)
-import Contract.TheSpace
+import Contract.Space
     exposing
         ( ColorEvent
         , PriceEvent

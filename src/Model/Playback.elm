@@ -32,7 +32,7 @@ module Model.Playback exposing
 import Array exposing (Array)
 import Config exposing (genesisSnapshotCid, playbackWindow)
 import Contract.Snapper exposing (Cid)
-import Contract.TheSpace exposing (ColorEvent)
+import Contract.Space exposing (ColorEvent)
 import Data
     exposing
         ( BlockNumber
