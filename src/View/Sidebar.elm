@@ -40,7 +40,16 @@ import Eth.Defaults exposing (zeroAddress)
 import Eth.Units exposing (EthUnit(..))
 import Html
 import Html.Styled exposing (Html, button, div, img, input, text, toUnstyled)
-import Html.Styled.Attributes exposing (css, href, src, title, type_, value)
+import Html.Styled.Attributes as Attributes
+    exposing
+        ( css
+        , fromUnstyled
+        , href
+        , src
+        , title
+        , type_
+        , value
+        )
 import Html.Styled.Events exposing (onClick, onInput)
 import Html.Styled.Lazy as Lazy
 import InfiniteList as Inf
@@ -214,7 +223,7 @@ scrollArea : Float -> List item -> Inf.Model -> (Int -> Int -> item -> Html.Html
 scrollArea scrollH items infList itemView msg =
     div
         [ css <| scrollAreaStyle scrollH <| List.length items
-        , Inf.onScroll msg |> Html.Styled.Attributes.fromUnstyled
+        , Inf.onScroll msg |> fromUnstyled
         ]
         [ Inf.view (scrollConfig scrollH itemView) infList items
             |> Html.Styled.fromUnstyled
@@ -349,7 +358,7 @@ nav uiMode playback =
             div [ css [ cursor pointer ], title title_ ]
                 [ Html.Styled.a
                     [ css [ outline none ]
-                    , Html.Styled.Attributes.target "_blank"
+                    , Attributes.target "_blank"
                     , href url
                     ]
                     [ iconNormal icon ]
@@ -1136,26 +1145,19 @@ progress pb =
                 , property "opacity" "0.7"
                 , property "-webkit-transition" ".2s"
                 , property "transition" "opacity .2s"
-                , pseudoClass "-webkit-slider-thumb"
-                    (progressPseudoStyle
+                , pseudoClass "-webkit-slider-thumb" <|
+                    progressPseudoStyle
                         ++ [ property "appearance" "none"
                            , property "-webkit-appearance" "none"
                            ]
-                    )
                 , pseudoClass "-moz-range-thumb" progressPseudoStyle
                 ]
-
-            limit =
-                PB.getMaxProgress pb
-
-            current =
-                PB.getProgress pb
         in
         input
             [ type_ "range"
-            , Html.Styled.Attributes.min <| String.fromInt 0
-            , Html.Styled.Attributes.max <| String.fromInt limit
-            , value <| String.fromInt current
+            , Attributes.min <| String.fromInt 0
+            , Attributes.max <| String.fromInt <| PB.getMaxProgress pb
+            , value <| String.fromInt <| PB.getProgress pb
             , onInput
                 (\v ->
                     case String.toInt v of
@@ -1174,7 +1176,6 @@ circleSpeed : PB.Playback -> Html Msg
 circleSpeed pb =
     let
         baseStyle =
-            --[ fontSize bigText ]
             [ fontSize extraBigText ]
 
         title_ =
