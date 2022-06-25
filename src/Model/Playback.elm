@@ -4,8 +4,7 @@ module Model.Playback exposing
     , DeltaData
     , Playback
     , Speed(..)
-    , Timeline
-    , TimelineBackwards
+    , TimelineCompatible
     , addColorEvent
     , addColorEvents
     , addDeltaData
@@ -142,6 +141,10 @@ type alias ColorChangeCompatible compatible =
 
 type alias TimelineBackwards =
     Array ColorChange
+
+
+type alias TimelineCompatible compatible =
+    Array (ColorChangeCompatible compatible)
 
 
 type Action

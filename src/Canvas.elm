@@ -346,19 +346,19 @@ timelineToIdxCidString timeline =
     timeline |> Array.map ccToIdxCid |> Array.toList |> String.join ","
 
 
-playbackTimelineBackwards : PB.Timeline -> Cmd msg
+playbackTimelineBackwards : PB.TimelineCompatible compatible -> Cmd msg
 playbackTimelineBackwards timeline =
     -- pbReverse,<i1>,<cc1>,<i2>,<cc2>...
     "pbReverse," ++ timelineToIdxCidString timeline |> send
 
 
-forward : PB.Timeline -> Cmd msg
+forward : PB.TimelineCompatible compatible -> Cmd msg
 forward timeline =
     -- pbForward,<i1>,<cc1>,<i2>,<cc2>...
     "pbForward," ++ timelineToIdxCidString timeline |> send
 
 
-rewind : PB.TimelineBackwards -> Cmd msg
+rewind : PB.TimelineCompatible compatible -> Cmd msg
 rewind timeline =
     -- pbRewind,<i1>,<cc1>,<i2>,<cc2>...
     "pbRewind," ++ timelineToIdxCidString timeline |> send
