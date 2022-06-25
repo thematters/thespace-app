@@ -13,7 +13,7 @@
         tick        playback step finished
 */
 
-// ployfill for createImageBitmap on Safari ///////////////////////////////////
+// ployfill for createImageBitmap /////////////////////////////////////////////
 
 if (!('createImageBitmap' in window)) {
     window.createImageBitmap = async function(data) {
@@ -26,7 +26,7 @@ if (!('createImageBitmap' in window)) {
             ctx.putImageData(data, 0, 0)
             dataURL = canvas.toDataURL()
             const img = document.createElement('img')
-            img.onload = () => resolve(this)
+            img.addEventListener('load', function() { resolve(this) })
             img.src = dataURL
         })
     }

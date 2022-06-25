@@ -278,7 +278,6 @@ addDeltaData_ deltaData pb =
                             finishLoading newData
                     in
                     ( Ready readyData
-                      --, NoAction
                     , InitSnapshot readyData.snapshot
                     )
 
