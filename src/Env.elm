@@ -1,7 +1,7 @@
 module Env exposing (env)
 
---import Config.Env.Development as Env
 --import Config.Env.Staging as Env
+--import Config.Env.Development as Env
 
 import Config.Env.Production as Env
 import Config.Env.Util exposing (Env)

@@ -55,6 +55,11 @@ bigTextSize =
     18
 
 
+extraBigTextSize : Float
+extraBigTextSize =
+    20
+
+
 smallText : Px
 smallText =
     px smallTextSize
@@ -68,6 +73,11 @@ normalText =
 bigText : Px
 bigText =
     px bigTextSize
+
+
+extraBigText : Px
+extraBigText =
+    px extraBigTextSize
 
 
 

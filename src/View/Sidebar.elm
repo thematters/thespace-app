@@ -246,8 +246,7 @@ viewSidebar ( appMode, ( uiMode, infoType ), winSize ) playback wallet acts asse
             ]
 
         collapsedStyle =
-            height (px <| edge * 2 + navHeight)
-                :: baseStyle
+            height (px <| edge * 2 + navHeight) :: baseStyle
 
         expandedStyle =
             height (px modalH) :: baseStyle
@@ -255,8 +254,7 @@ viewSidebar ( appMode, ( uiMode, infoType ), winSize ) playback wallet acts asse
         collapsedSidebar pb =
             div
                 [ css collapsedStyle ]
-                [ div
-                    [ css [ margin (px edge), marginBottom (px 0) ] ]
+                [ div [ css [ margin (px edge), marginBottom (px 0) ] ]
                     [ nav uiMode pb ]
                 ]
     in
@@ -283,29 +281,51 @@ viewSidebar ( appMode, ( uiMode, infoType ), winSize ) playback wallet acts asse
                     ]
                 , let
                     acts_ =
-                        Lazy.lazy5 viewActs modalH wallet mintTax actsInfList acts
+                        -- In theory we don't need lazy here,
+                        -- but Elm seems couldn't figure it out sometimes.
+                        Lazy.lazy5 viewActs
+                            modalH
+                            wallet
+                            mintTax
+                            actsInfList
+                            acts
 
                     assets_ =
-                        Lazy.lazy4 viewAssets modalH wallet assetsInfList assets
-                  in
-                  case infoType of
-                    -- Some trick as canvas, using fixed layout
-                    -- to avoid scroll reset problem
-                    ActLogs ->
-                        div []
-                            [ div [] [ acts_ ]
-                            , div [ css [ display none ] ] [ assets_ ]
-                            ]
+                        Lazy.lazy4 viewAssets
+                            modalH
+                            wallet
+                            assetsInfList
+                            assets
 
-                    AssetsManager ->
-                        div []
-                            [ div [ css [ display none ] ] [ acts_ ]
-                            , div [] [ assets_ ]
-                            ]
+                    hide =
+                        [ css [ display none ] ]
+                  in
+                  div [] <|
+                    case infoType of
+                        -- Same trick as canvas, using fixed layout
+                        -- to avoid scroll reset problem
+                        ActLogs ->
+                            [ div [] [ acts_ ], div hide [ assets_ ] ]
+
+                        AssetsManager ->
+                            [ div hide [ acts_ ], div [] [ assets_ ] ]
                 ]
 
         ( Playback, _ ) ->
             viewPlayback playback
+
+
+spinnerPlaceholder : Html msg
+spinnerPlaceholder =
+    div
+        [ css
+            [ width (px 28)
+            , height (px 28)
+            , displayFlex
+            , alignItems center
+            ]
+        ]
+        [ spinner bigTextSize grayStr ]
 
 
 nav : SidebarUIMode -> PB.Playback -> Html Msg
@@ -346,7 +366,7 @@ nav uiMode playback =
                 title_ =
                     "Playback Recent History"
             in
-            if PB.readyToStart playback then
+            if PB.readyToEnter playback then
                 div
                     [ css [ cursor pointer ]
                     , title title_
@@ -355,7 +375,7 @@ nav uiMode playback =
                     [ iconNormal Icon.history ]
 
             else
-                div [ title title_ ] [ iconLight Icon.history ]
+                spinnerPlaceholder
 
         modeSwitch =
             div
@@ -1046,129 +1066,138 @@ viewPlayback pb =
             , marginRight (px edge)
             ]
     in
-    case pb of
-        PB.Loading _ ->
-            phantomDiv
-
-        PB.Ready { speed, status, timeline } ->
-            div [ css modelStyle ]
-                [ div
-                    [ css playbackStyle ]
-                    [ div [ css [ marginRight (px 10) ] ] [ logo ]
-                    , togglePlay status <| PB.readyToSlide pb
-                    , progress status timeline
-                    , circleSpeed speed
-                    , exitPlayback
-                    ]
+    if PB.readyToEnter pb then
+        div [ css modelStyle ]
+            [ div
+                [ css playbackStyle ]
+                [ div [ css [ marginRight (px 10) ] ] [ logo ]
+                , togglePlay pb
+                , progress pb
+                , circleSpeed pb
+                , exitPlayback
                 ]
-
-
-togglePlay : PB.Status -> Bool -> Html Msg
-togglePlay status readyToSlide =
-    if not readyToSlide then
-        spinner bigTextSize grayStr
+            ]
 
     else
-        case status of
-            PB.Playing _ ->
-                div
-                    [ css [ cursor pointer ]
-                    , title "Pause"
-                    , onClick PlaybackPause
-                    ]
-                    [ iconNormal Icon.pause ]
-
-            PB.Paused _ ->
-                div
-                    [ css [ cursor pointer ]
-                    , title "Play"
-                    , onClick PlaybackPlay
-                    ]
-                    [ iconNormal Icon.play ]
+        phantomDiv
 
 
-progress : PB.Status -> PB.Timeline -> Html Msg
-progress status timeline =
-    let
-        progressPseudoStyle =
-            [ width (px 25)
-            , height (px 25)
-            , border (px 0)
-            , backgroundColor highlightColor2
-            , cursor pointer
+togglePlay : PB.Playback -> Html Msg
+togglePlay pb =
+    if not <| PB.readyToPlay pb then
+        spinnerPlaceholder
+
+    else if PB.playing pb then
+        div
+            [ css [ cursor pointer ]
+            , title "Pause"
+            , onClick PlaybackPause
             ]
+            [ iconNormal Icon.pause ]
 
-        progressStyle =
-            [ width (px progressBarWidth)
-            , height (px 2)
-            , opacity (num 0.7)
-            , outline none
-            , backgroundColor secondary
-            , property "-webkit-appearance" "none"
-            , property "appearance" "none"
-            , property "opacity" "0.7"
-            , property "-webkit-transition" ".2s"
-            , property "transition" "opacity .2s"
-            , pseudoClass "-webkit-slider-thumb"
-                (progressPseudoStyle
-                    ++ [ property "appearance" "none"
-                       , property "-webkit-appearance" "none"
-                       ]
+    else
+        div
+            [ css [ cursor pointer ]
+            , title "Play"
+            , onClick PlaybackPlay
+            ]
+            [ iconNormal Icon.play ]
+
+
+progress : PB.Playback -> Html Msg
+progress pb =
+    if not <| PB.readyToPlay pb then
+        div
+            [ css
+                [ width (px progressBarWidth)
+                , borderBottom3 (px 2) solid lightgray
+                ]
+            ]
+            []
+
+    else
+        let
+            progressPseudoStyle =
+                [ width (px 25)
+                , height (px 25)
+                , border (px 0)
+                , backgroundColor highlightColor2
+                , cursor pointer
+                ]
+
+            progressStyle =
+                [ width (px progressBarWidth)
+                , height (px 2)
+                , opacity (num 0.7)
+                , outline none
+                , backgroundColor secondary
+                , property "-webkit-appearance" "none"
+                , property "appearance" "none"
+                , property "opacity" "0.7"
+                , property "-webkit-transition" ".2s"
+                , property "transition" "opacity .2s"
+                , pseudoClass "-webkit-slider-thumb"
+                    (progressPseudoStyle
+                        ++ [ property "appearance" "none"
+                           , property "-webkit-appearance" "none"
+                           ]
+                    )
+                , pseudoClass "-moz-range-thumb" progressPseudoStyle
+                ]
+
+            limit =
+                PB.getMaxProgress pb
+
+            current =
+                PB.getProgress pb
+        in
+        input
+            [ type_ "range"
+            , Html.Styled.Attributes.min <| String.fromInt 0
+            , Html.Styled.Attributes.max <| String.fromInt limit
+            , value <| String.fromInt current
+            , onInput
+                (\v ->
+                    case String.toInt v of
+                        Just i ->
+                            PlaybackSlide i
+
+                        Nothing ->
+                            NoOp
                 )
-            , pseudoClass "-moz-range-thumb" progressPseudoStyle
+            , css progressStyle
             ]
-
-        limit =
-            PB.maxProgress timeline
-
-        current =
-            case status of
-                PB.Playing i ->
-                    i
-
-                PB.Paused i ->
-                    i
-    in
-    input
-        [ type_ "range"
-        , Html.Styled.Attributes.min <| String.fromInt 0
-        , Html.Styled.Attributes.max <| String.fromInt limit
-        , value <| String.fromInt current
-        , onInput
-            (\v ->
-                case String.toInt v of
-                    Just i ->
-                        PlaybackSlide i
-
-                    Nothing ->
-                        NoOp
-            )
-        , css progressStyle
-        ]
-        []
+            []
 
 
-circleSpeed : PB.Speed -> Html Msg
-circleSpeed spd =
+circleSpeed : PB.Playback -> Html Msg
+circleSpeed pb =
     let
-        style_ =
-            [ border3 (px 2) solid secondary
-            , borderRadius (px 8)
-            , padding (px 4)
-            , color secondary
-            , fontWeight bold
-            , cursor pointer
-            ]
+        baseStyle =
+            --[ fontSize bigText ]
+            [ fontSize extraBigText ]
+
+        title_ =
+            "Change Speed"
     in
-    div [ css style_, title "Change Speed", onClick PlaybackCircleSpeed ]
-        [ text <| PB.speedToString spd ]
+    if not <| PB.readyToPlay pb then
+        div [ css <| baseStyle ++ [ color lightgray ], title title_ ]
+            [ text "1X" ]
+
+    else
+        div
+            [ css <| baseStyle ++ [ color secondary, cursor pointer ]
+            , title title_
+            , onClick PlaybackCircleSpeed
+            ]
+            [ text <| PB.speedToString <| PB.getSpeed pb ]
 
 
 exitPlayback : Html Msg
 exitPlayback =
     div
         [ css [ marginLeft (px 10), cursor pointer ]
-        , title "Exit playback"
+        , title "Exit Playback"
         , onClick <| AppModeChange Realtime
         ]
         [ iconNormal Icon.close ]

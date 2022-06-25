@@ -2,6 +2,7 @@ port module Canvas exposing
     ( canvasSubs
     , centerToCellTransform
     , endPlayback
+    , enterPlayback
     , forward
     , freeMoveTransform
     , initLatestColors
@@ -9,14 +10,13 @@ port module Canvas exposing
     , initPlayback
     , moveClampToEdgeTransform
     , moveTransform
+    , playAgain
     , playbackChangeSpeed
-    , playbackReverseTimeline
+    , playbackTimelineBackwards
     , redrawMiniMap
     , reset
     , resetTransform
     , rewind
-    , startPlayback
-    , startPlaybackAgain
     , transform
     , update
     , zoomTransform
@@ -319,18 +319,18 @@ initPlayback playbackSnapshotUri =
     "pbInit," ++ playbackSnapshotUri |> send
 
 
-startPlayback : Cmd msg
-startPlayback =
+enterPlayback : Cmd msg
+enterPlayback =
     "pbStart" |> send
 
 
-startPlaybackAgain : Cmd msg
-startPlaybackAgain =
+playAgain : Cmd msg
+playAgain =
     "pbPlayAgain" |> send
 
 
-ccToInxCid : { compatible | index : Int, color : Int } -> String
-ccToInxCid change =
+ccToIdxCid : PB.ColorChangeCompatible compatible -> String
+ccToIdxCid change =
     let
         idx =
             String.fromInt <| dec change.index
@@ -341,26 +341,27 @@ ccToInxCid change =
     idx ++ "," ++ cId
 
 
-forwardCommand : List PB.BlockInfoColorChange -> String
-forwardCommand colorChanges =
-    "pbForward," ++ String.join "," (List.map ccToInxCid colorChanges)
+timelineToIdxCidString : Array (PB.ColorChangeCompatible compatible) -> String
+timelineToIdxCidString timeline =
+    timeline |> Array.map ccToIdxCid |> Array.toList |> String.join ","
 
 
-forward : List PB.BlockInfoColorChange -> Cmd msg
-forward colorChanges =
+playbackTimelineBackwards : PB.Timeline -> Cmd msg
+playbackTimelineBackwards timeline =
+    -- pbReverse,<i1>,<cc1>,<i2>,<cc2>...
+    "pbReverse," ++ timelineToIdxCidString timeline |> send
+
+
+forward : PB.Timeline -> Cmd msg
+forward timeline =
     -- pbForward,<i1>,<cc1>,<i2>,<cc2>...
-    forwardCommand colorChanges |> send
+    "pbForward," ++ timelineToIdxCidString timeline |> send
 
 
-rewindCommand : List PB.ColorChange -> String
-rewindCommand colorChanges =
-    "pbRewind," ++ String.join "," (List.map ccToInxCid colorChanges)
-
-
-rewind : List PB.ColorChange -> Cmd msg
-rewind colorChanges =
+rewind : PB.TimelineBackwards -> Cmd msg
+rewind timeline =
     -- pbRewind,<i1>,<cc1>,<i2>,<cc2>...
-    rewindCommand colorChanges |> send
+    "pbRewind," ++ timelineToIdxCidString timeline |> send
 
 
 endPlayback : Cmd msg
@@ -387,16 +388,6 @@ playbackChangeSpeed spd =
             changeSpeedCommand 4 |> send
 
 
-playbackReverseTimeline : PB.Timeline -> Cmd msg
-playbackReverseTimeline timeline =
-    -- reverse,<i1>,<cc1>,<i2>,<cc2>...
-    let
-        cmd =
-            String.join "," <| Array.toList <| Array.map ccToInxCid timeline
-    in
-    "reverse," ++ cmd |> send
-
-
 
 -- Subscriptions
 
@@ -418,7 +409,7 @@ handleAckMessages model =
                     AppModeChange Realtime
 
                 "pbInited" ->
-                    PlaybackCanvasReady
+                    PlaybackSnapshotReady
 
                 "pbStarted" ->
                     case model.mode of
@@ -432,6 +423,6 @@ handleAckMessages model =
                     PlaybackTicked
 
                 s ->
-                    PlaybackReverseTimeline <| String.split "," s
+                    PlaybackTimelineBackwards <| String.split "," s
     in
     handler

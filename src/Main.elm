@@ -726,140 +726,41 @@ update msg model =
                     , C.endPlayback
                     )
 
+        -- Playback
         AppModeChange Playback ->
             case model.mode of
                 Realtime ->
-                    case model.playback of
-                        PB.Loading _ ->
-                            ( model, Cmd.none )
-
-                        PB.Ready { snapshot, timeline } ->
-                            let
-                                newPlayback =
-                                    PB.start model.playback
-                            in
-                            ( { model
-                                | mode = Playback
-                                , miniMapMode = CollapsedMiniMap
-                                , playback = newPlayback
-                              }
-                            , case newPlayback of
-                                PB.Ready data ->
-                                    C.playbackReverseTimeline data.timeline
-
-                                _ ->
-                                    Cmd.none
-                            )
+                    handlePlayback model PB.start
 
                 _ ->
                     ( model, Cmd.none )
 
-        -- Playback
         DeltaRecieved jsonData ->
-            let
-                ( newPlayback, action ) =
-                    case jsonData of
-                        Ok data ->
-                            model.playback |> PB.addDeltaData data
+            handlePlayback model <| PB.addDeltaData jsonData
 
-                        Err _ ->
-                            ( model.playback, PB.Standby )
-            in
-            ( { model | playback = newPlayback }
-            , case ( newPlayback, action ) of
-                ( PB.Ready { snapshot }, _ ) ->
-                    C.initPlayback <| cidToSnapshotUri snapshot
+        PlaybackSnapshotReady ->
+            handlePlayback model <| PB.setSnapshotReady
 
-                ( _, PB.LoadMore cid ) ->
-                    Rpc.getDeltas [ cid ]
-
-                _ ->
-                    Cmd.none
-            )
-
-        PlaybackCanvasReady ->
-            ( { model | playback = PB.setCanvasReady model.playback }
-            , Cmd.none
-            )
-
-        PlaybackReverseTimeline colorStrIds ->
-            ( { model
-                | playback = model.playback |> PB.setReverseTimeline colorStrIds
-              }
-            , C.startPlayback
-            )
+        PlaybackTimelineBackwards colorStrIds ->
+            handlePlayback model <| PB.setTimelineBackwards colorStrIds
 
         PlaybackPlay ->
-            let
-                ( newPlayback, action ) =
-                    model.playback |> PB.play
-            in
-            ( { model | playback = newPlayback }
-            , handlePlaybackPlayAction action
-            )
+            handlePlayback model <| PB.play
 
         PlaybackPause ->
-            ( { model | playback = PB.pause model.playback }, Cmd.none )
+            handlePlayback model <| PB.pause
 
         PlaybackTicked ->
-            case model.playback of
-                PB.Loading _ ->
-                    ( model, Cmd.none )
-
-                PB.Ready { status } ->
-                    case status of
-                        PB.Playing _ ->
-                            let
-                                ( newPlayback, action ) =
-                                    model.playback |> PB.tick
-                            in
-                            ( { model | playback = newPlayback }
-                            , handlePlaybackPlayAction action
-                            )
-
-                        _ ->
-                            ( model, Cmd.none )
+            handlePlayback model <| PB.tick
 
         PlaybackSlide i ->
-            let
-                ( newPlayback, action ) =
-                    model.playback |> PB.jumpTo i
-            in
-            ( { model | playback = newPlayback }
-            , handlePlaybackPlayAction action
-            )
+            handlePlayback model <| PB.jumpTo i
 
         PlaybackCircleSpeed ->
-            let
-                newPlayback =
-                    PB.speedUp model.playback
-            in
-            ( { model | playback = newPlayback }
-            , case newPlayback of
-                PB.Loading _ ->
-                    Cmd.none
-
-                PB.Ready { speed } ->
-                    C.playbackChangeSpeed speed
-            )
+            handlePlayback model <| PB.speedUp
 
         NoOp ->
             ( model, Cmd.none )
-
-
-handlePlaybackPlayAction step =
-    case step of
-        PB.Forward cs ->
-            C.forward cs
-
-        PB.Rewind cs ->
-            C.rewind cs
-
-        PB.PlayAgain ->
-            C.startPlaybackAgain
-
-        PB.NoAction ->
-            Cmd.none
 
 
 
@@ -1018,6 +919,57 @@ requestOwnPixelsFirstPageOrNothing m address =
 
         _ ->
             ( m, Cmd.none )
+
+
+
+-- Playback Handler
+
+
+handlePlayback : Model -> (PB.Playback -> ( PB.Playback, PB.Action )) -> ( Model, Cmd Msg )
+handlePlayback model handler =
+    let
+        ( newPlayback, action ) =
+            model.playback |> handler
+
+        newModel =
+            { model | playback = newPlayback }
+    in
+    handlePlaybackPlayAction newModel action
+
+
+handlePlaybackPlayAction model action =
+    case action of
+        PB.LoadDeltas cids ->
+            ( model, Rpc.getDeltas cids )
+
+        PB.LoadDelta cid ->
+            ( model, Rpc.getDeltas [ cid ] )
+
+        PB.InitSnapshot snapshot ->
+            ( model, C.initPlayback <| cidToSnapshotUri snapshot )
+
+        PB.BuildTimelineBackwards timeline ->
+            ( { model | mode = Playback, miniMapMode = CollapsedMiniMap }
+            , C.playbackTimelineBackwards timeline
+            )
+
+        PB.EnterPlayback ->
+            ( model, C.enterPlayback )
+
+        PB.Forward cs ->
+            ( model, C.forward cs )
+
+        PB.Rewind cs ->
+            ( model, C.rewind cs )
+
+        PB.PlayAgain ->
+            ( model, C.playAgain )
+
+        PB.SetSpeed speed ->
+            ( model, C.playbackChangeSpeed speed )
+
+        PB.NoAction ->
+            ( model, Cmd.none )
 
 
 
@@ -1682,9 +1634,7 @@ handleRpcMessageRecieved model msg =
                     ( model, Cmd.none )
 
         RpcDeltaCids cids ->
-            ( { model | playback = model.playback |> PB.initDeltaCids cids }
-            , Rpc.getDeltas cids
-            )
+            handlePlayback model <| PB.initDeltaCids cids
 
         RpcError err ->
             ( { model | acts = ActError err :: model.acts }, Cmd.none )

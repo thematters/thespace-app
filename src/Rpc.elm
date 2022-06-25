@@ -87,12 +87,7 @@ import Http
 import Iso8601
 import Json.Decode as D
 import Json.Encode as E exposing (Value)
-import Model.Playback
-    exposing
-        ( ColorChange
-        , ColorChangeDeltaBlock
-        , ColorChangeDeltaData
-        )
+import Model.Playback exposing (deltaDataDecoder)
 import Msg exposing (Msg(..))
 
 
@@ -933,34 +928,6 @@ getDeltas cids =
                     }
             )
             cids
-
-
-deltaDataDecoder : Cid -> D.Decoder ColorChangeDeltaData
-deltaDataDecoder cid =
-    D.map4 ColorChangeDeltaData
-        (D.at [ "delta" ] (D.list deltaBlockDecoder))
-        (D.at [ "prev" ] (D.maybe D.string))
-        (D.at [ "snapshot" ] D.string)
-        (D.succeed cid)
-
-
-deltaBlockDecoder : D.Decoder ColorChangeDeltaBlock
-deltaBlockDecoder =
-    --D.map3 ColorChangeDeltaBlock
-    --    (D.at [ "time" ] Iso8601.decoder)
-    --    (D.at [ "bk" ] D.int)
-    --    (D.at [ "cs" ] (D.list colorChangeDecoder))
-    D.map2
-        ColorChangeDeltaBlock
-        (D.at [ "bk" ] D.int)
-        (D.at [ "cs" ] (D.list colorChangeDecoder))
-
-
-colorChangeDecoder : D.Decoder ColorChange
-colorChangeDecoder =
-    D.map2 ColorChange
-        (D.at [ "i" ] D.int)
-        (D.at [ "c" ] D.int)
 
 
 

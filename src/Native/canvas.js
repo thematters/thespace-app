@@ -326,16 +326,16 @@ async function render(cmd) {
             playingBack = false
             break
 
-        case "reverse":
+        case "pbReverse":
             // build reverse timeline
-            const reverseTimeline = []
+            const timelineBackwards = []
             const tmpMapData = new Uint8ClampedArray(playbackInitMapData)
             for (let i = 1; i < args.length; i += 2) {
                 var old = swapImageData(
                     tmpMapData, args[i] >> 0, cc2rgb(args[i + 1]))
-                reverseTimeline.push(old == 0 ? 0 : reverseRGBs[old])
+                timelineBackwards.push(old == 0 ? 0 : reverseRGBs[old])
             }
-            app.ports.canvasIn.send(reverseTimeline.join(","))
+            app.ports.canvasIn.send(timelineBackwards.join(","))
             break
 
         default:

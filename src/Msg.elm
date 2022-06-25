@@ -22,15 +22,15 @@ import Model
         , SidebarUIMode(..)
         )
 import Model.Assets exposing (AssetsSort)
-import Model.Playback exposing (ColorChangeDeltaData)
+import Model.Playback exposing (DeltaData)
 
 
 type Msg
     = NoOp
       -- App Modes
     | AppModeChange AppMode
-    | PlaybackCanvasReady
-    | PlaybackReverseTimeline (List String)
+    | PlaybackSnapshotReady
+    | PlaybackTimelineBackwards (List String)
     | PlaybackPlay
     | PlaybackPause
     | PlaybackSlide Int
@@ -93,4 +93,4 @@ type Msg
     | RpcSocketReconnecting
     | RpcSocketReconnected
     | ReInitApp
-    | DeltaRecieved (Result Http.Error ColorChangeDeltaData)
+    | DeltaRecieved (Result Http.Error DeltaData)
