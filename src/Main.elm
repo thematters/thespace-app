@@ -718,20 +718,13 @@ update msg model =
                     ( model, Cmd.none )
 
                 Playback ->
-                    ( { model
-                        | mode = Realtime
-                        , sidebarMode =
-                            responsiveSiebarMode model.winSize model.sidebarMode
-                        , miniMapMode = responsiveMiniMapMode model.winSize
-                      }
-                    , C.endPlayback
-                    )
+                    handlePlayback model PB.exit
 
         -- Playback
         AppModeChange Playback ->
             case model.mode of
                 Realtime ->
-                    handlePlayback model PB.start
+                    handlePlayback model PB.enter
 
                 _ ->
                     ( model, Cmd.none )
@@ -740,25 +733,25 @@ update msg model =
             handlePlayback model <| PB.addDeltaData jsonData
 
         PlaybackSnapshotReady ->
-            handlePlayback model <| PB.setSnapshotReady
+            handlePlayback model PB.setSnapshotReady
 
-        PlaybackTimelineBackwards colorStrIds ->
-            handlePlayback model <| PB.setTimelineBackwards colorStrIds
+        PlaybackRewindTimeline colorStrIds ->
+            handlePlayback model <| PB.setRewindTimeline colorStrIds
 
         PlaybackPlay ->
-            handlePlayback model <| PB.play
+            handlePlayback model PB.play
 
         PlaybackPause ->
-            handlePlayback model <| PB.pause
+            handlePlayback model PB.pause
 
         PlaybackTicked ->
-            handlePlayback model <| PB.tick
+            handlePlayback model PB.tick
 
         PlaybackSlide i ->
             handlePlayback model <| PB.jumpTo i
 
         PlaybackCircleSpeed ->
-            handlePlayback model <| PB.speedUp
+            handlePlayback model PB.speedUp
 
         NoOp ->
             ( model, Cmd.none )
@@ -938,20 +931,18 @@ handlePlayback model handler =
     handlePlaybackPlayAction newModel action
 
 
+handlePlaybackPlayAction : Model -> PB.Action -> ( Model, Cmd Msg )
 handlePlaybackPlayAction model action =
     case action of
         PB.LoadDeltas cids ->
             ( model, Rpc.getDeltas cids )
 
-        PB.LoadDelta cid ->
-            ( model, Rpc.getDeltas [ cid ] )
-
         PB.InitSnapshot snapshot ->
             ( model, C.initPlayback <| cidToSnapshotUri snapshot )
 
-        PB.BuildTimelineBackwards timeline ->
+        PB.BuildRewindTimeline timeline ->
             ( { model | mode = Playback, miniMapMode = CollapsedMiniMap }
-            , C.playbackTimelineBackwards timeline
+            , C.playbackRewindTimeline timeline
             )
 
         PB.EnterPlayback ->
@@ -967,7 +958,17 @@ handlePlaybackPlayAction model action =
             ( model, C.playAgain )
 
         PB.SetSpeed speed ->
-            ( model, C.playbackChangeSpeed speed )
+            ( { model
+                | mode = Realtime
+                , sidebarMode =
+                    responsiveSiebarMode model.winSize model.sidebarMode
+                , miniMapMode = responsiveMiniMapMode model.winSize
+              }
+            , C.playbackChangeSpeed speed
+            )
+
+        PB.ExitPlayback ->
+            ( model, C.endPlayback )
 
         PB.NoAction ->
             ( model, Cmd.none )

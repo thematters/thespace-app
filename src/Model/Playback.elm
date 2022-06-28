@@ -4,11 +4,13 @@ module Model.Playback exposing
     , DeltaData
     , Playback
     , Speed(..)
-    , TimelineCompatible
+    , Timeline
     , addColorEvent
     , addColorEvents
     , addDeltaData
     , deltaDataDecoder
+    , enter
+    , exit
     , getMaxProgress
     , getProgress
     , getSpeed
@@ -21,11 +23,10 @@ module Model.Playback exposing
     , playing
     , readyToEnter
     , readyToPlay
+    , setRewindTimeline
     , setSnapshotReady
-    , setTimelineBackwards
     , speedToString
     , speedUp
-    , start
     , tick
     )
 
@@ -46,7 +47,6 @@ import Data
 import Dict exposing (Dict)
 import Http
 import Json.Decode as D
-import Time exposing (Posix)
 
 
 
@@ -71,8 +71,8 @@ type alias LoadedData =
     , timelineReady : Bool
     , speed : Speed
     , snapshot : Cid
-    , timeline : Timeline
-    , timelineBackwards : TimelineBackwards
+    , timeline : ForwardTimeline
+    , rewindTimeline : RewindTimeline
     , events : Events
     }
 
@@ -124,10 +124,6 @@ type alias ColorChange =
     }
 
 
-type alias Timeline =
-    Array ColorChangeWithMeta
-
-
 type alias ColorChangeWithMeta =
     { blockNumber : BlockNumber
     , index : Index
@@ -139,29 +135,37 @@ type alias ColorChangeCompatible compatible =
     { compatible | index : Int, color : Int }
 
 
-type alias TimelineBackwards =
-    Array ColorChange
-
-
-type alias TimelineCompatible compatible =
+type alias Timeline compatible =
     Array (ColorChangeCompatible compatible)
+
+
+type alias ForwardTimeline =
+    Array ColorChangeWithMeta
+
+
+type alias RewindTimeline =
+    Array ColorChange
 
 
 type Action
     = LoadDeltas (List Cid)
-    | LoadDelta Cid
     | InitSnapshot Cid
-    | BuildTimelineBackwards Timeline
+    | BuildRewindTimeline ForwardTimeline
     | EnterPlayback
     | PlayAgain
-    | Forward Timeline
-    | Rewind TimelineBackwards
+    | Forward ForwardTimeline
+    | Rewind RewindTimeline
     | SetSpeed Speed
+    | ExitPlayback
     | NoAction
 
 
 type alias LoadedDataBlocks =
     Dict BlockNumber ColorChangeDeltaBlock
+
+
+type alias Handler =
+    Playback -> ( Playback, Action )
 
 
 
@@ -177,7 +181,7 @@ init =
         }
 
 
-initDeltaCids : List Cid -> Playback -> ( Playback, Action )
+initDeltaCids : List Cid -> Handler
 initDeltaCids cids pb =
     case pb of
         Loading loadingData ->
@@ -218,7 +222,7 @@ addColorEvents cevts pb =
             Ready <| addMany cs loadedData
 
 
-addDeltaData : Result Http.Error DeltaData -> Playback -> ( Playback, Action )
+addDeltaData : Result Http.Error DeltaData -> Handler
 addDeltaData jsonData pb =
     case jsonData of
         Err _ ->
@@ -228,7 +232,7 @@ addDeltaData jsonData pb =
             addDeltaData_ data pb
 
 
-addDeltaData_ : DeltaData -> Playback -> ( Playback, Action )
+addDeltaData_ : DeltaData -> Handler
 addDeltaData_ deltaData pb =
     case pb of
         Ready _ ->
@@ -266,7 +270,7 @@ addDeltaData_ deltaData pb =
                 ( False, Just nextCid ) ->
                     if not <| List.member nextCid cids then
                         ( Loading { newData | cids = nextCid :: cids }
-                        , LoadDelta nextCid
+                        , LoadDeltas [ nextCid ]
                         )
 
                     else
@@ -282,7 +286,7 @@ addDeltaData_ deltaData pb =
                     )
 
 
-setSnapshotReady : Playback -> ( Playback, Action )
+setSnapshotReady : Handler
 setSnapshotReady pb =
     ( case pb of
         Ready data ->
@@ -294,8 +298,8 @@ setSnapshotReady pb =
     )
 
 
-setTimelineBackwards : List String -> Playback -> ( Playback, Action )
-setTimelineBackwards colorIds pb =
+setRewindTimeline : List String -> Handler
+setRewindTimeline colorIds pb =
     let
         revTimeline tl cs =
             List.map2
@@ -319,7 +323,7 @@ setTimelineBackwards colorIds pb =
             ( Ready
                 { data
                     | timelineReady = True
-                    , timelineBackwards = revTimeline timeline colorIds
+                    , rewindTimeline = revTimeline timeline colorIds
                 }
             , EnterPlayback
             )
@@ -398,8 +402,8 @@ getSpeed pb =
             OneX
 
 
-start : Playback -> ( Playback, Action )
-start pb =
+enter : Handler
+enter pb =
     case pb of
         Ready data ->
             let
@@ -411,14 +415,14 @@ start pb =
                         data
             in
             ( Ready { newData | status = Paused 0 }
-            , BuildTimelineBackwards newData.timeline
+            , BuildRewindTimeline newData.timeline
             )
 
         _ ->
             ( pb, NoAction )
 
 
-play : Playback -> ( Playback, Action )
+play : Handler
 play pb =
     case pb of
         Ready ({ status, timeline } as data) ->
@@ -443,7 +447,7 @@ play pb =
             ( pb, NoAction )
 
 
-pause : Playback -> ( Playback, Action )
+pause : Handler
 pause pb =
     ( case pb of
         Ready ({ status } as data) ->
@@ -460,7 +464,7 @@ pause pb =
     )
 
 
-tick : Playback -> ( Playback, Action )
+tick : Handler
 tick pb =
     case pb of
         Ready ({ status, timeline } as data) ->
@@ -487,7 +491,7 @@ tick pb =
             ( pb, NoAction )
 
 
-speedUp : Playback -> ( Playback, Action )
+speedUp : Handler
 speedUp pb =
     case pb of
         Ready ({ speed } as data) ->
@@ -501,10 +505,10 @@ speedUp pb =
             ( pb, NoAction )
 
 
-jumpTo : Int -> Playback -> ( Playback, Action )
+jumpTo : Int -> Handler
 jumpTo i pb =
     case pb of
-        Ready ({ status, timeline, timelineBackwards } as data) ->
+        Ready ({ status, timeline, rewindTimeline } as data) ->
             let
                 prog =
                     i |> safeProgress timeline
@@ -526,11 +530,21 @@ jumpTo i pb =
                     NoAction
 
                 LT ->
-                    Rewind <| Array.slice i curr timelineBackwards
+                    Rewind <| Array.slice i curr rewindTimeline
             )
 
         _ ->
             ( pb, NoAction )
+
+
+exit : Handler
+exit pb =
+    case pb of
+        Loading _ ->
+            ( pb, NoAction )
+
+        Ready data ->
+            ( Ready { data | speed = OneX }, ExitPlayback )
 
 
 
@@ -542,12 +556,12 @@ stepLenght =
     120
 
 
-maxProgress : Timeline -> Int
+maxProgress : ForwardTimeline -> Int
 maxProgress =
     Array.length >> dec
 
 
-safeProgress : Timeline -> Int -> Int
+safeProgress : ForwardTimeline -> Int -> Int
 safeProgress =
     maxProgress >> clamp 0
 
@@ -566,7 +580,7 @@ finishLoading { cids, deltas, events } =
             |> Maybe.map .snapshot
             |> Maybe.withDefault genesisSnapshotCid
     , timeline = loadingDataToTimeline deltas events
-    , timelineBackwards = Array.empty
+    , rewindTimeline = Array.empty
     , events = Array.empty
     }
 
@@ -611,7 +625,7 @@ accColorEvent { blockNumber, index, color } blocks =
     blocks |> Dict.update blockNumber update
 
 
-loadingDataToTimeline : LoadingDataDeltas -> Events -> Timeline
+loadingDataToTimeline : LoadingDataDeltas -> Events -> ForwardTimeline
 loadingDataToTimeline deltas events =
     blocksFromLoadingData deltas events |> blocksToTimeline
 
@@ -631,7 +645,7 @@ blocksFromLoadingData deltas events =
     accColorEvents events blocks
 
 
-blocksToTimeline : LoadedDataBlocks -> Timeline
+blocksToTimeline : LoadedDataBlocks -> ForwardTimeline
 blocksToTimeline blocks =
     blocks
         |> Dict.values
@@ -641,7 +655,7 @@ blocksToTimeline blocks =
         |> Array.fromList
 
 
-updateTimeline : Events -> Timeline -> Timeline
+updateTimeline : Events -> ForwardTimeline -> ForwardTimeline
 updateTimeline events oldTimeline =
     events |> Array.map eventToInfoColorChange |> Array.append oldTimeline
 
@@ -671,7 +685,7 @@ eventToInfoColorChange { blockNumber, index, color } =
     { blockNumber = blockNumber, index = index, color = color }
 
 
-stepForward : Int -> Timeline -> ( Int, Action )
+stepForward : Int -> ForwardTimeline -> ( Int, Action )
 stepForward i timeline =
     let
         historyLen =

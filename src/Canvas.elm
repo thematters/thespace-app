@@ -12,7 +12,7 @@ port module Canvas exposing
     , moveTransform
     , playAgain
     , playbackChangeSpeed
-    , playbackTimelineBackwards
+    , playbackRewindTimeline
     , redrawMiniMap
     , reset
     , resetTransform
@@ -346,19 +346,19 @@ timelineToIdxCidString timeline =
     timeline |> Array.map ccToIdxCid |> Array.toList |> String.join ","
 
 
-playbackTimelineBackwards : PB.TimelineCompatible compatible -> Cmd msg
-playbackTimelineBackwards timeline =
+playbackRewindTimeline : PB.Timeline compatible -> Cmd msg
+playbackRewindTimeline timeline =
     -- pbReverse,<i1>,<cc1>,<i2>,<cc2>...
     "pbReverse," ++ timelineToIdxCidString timeline |> send
 
 
-forward : PB.TimelineCompatible compatible -> Cmd msg
+forward : PB.Timeline compatible -> Cmd msg
 forward timeline =
     -- pbForward,<i1>,<cc1>,<i2>,<cc2>...
     "pbForward," ++ timelineToIdxCidString timeline |> send
 
 
-rewind : PB.TimelineCompatible compatible -> Cmd msg
+rewind : PB.Timeline compatible -> Cmd msg
 rewind timeline =
     -- pbRewind,<i1>,<cc1>,<i2>,<cc2>...
     "pbRewind," ++ timelineToIdxCidString timeline |> send
@@ -423,6 +423,6 @@ handleAckMessages model =
                     PlaybackTicked
 
                 s ->
-                    PlaybackTimelineBackwards <| String.split "," s
+                    PlaybackRewindTimeline <| String.split "," s
     in
     handler

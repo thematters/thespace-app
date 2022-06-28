@@ -36,12 +36,6 @@ type alias Snapshot =
     }
 
 
-type alias PlaybackDelta =
-    { blockNumber : BlockNumber
-    , cid : Cid
-    }
-
-
 type alias LatestSnapshotUgly =
     { shift : BigInt
     , latestSnapshotBlock : BigInt

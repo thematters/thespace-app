@@ -30,7 +30,7 @@ type Msg
       -- App Modes
     | AppModeChange AppMode
     | PlaybackSnapshotReady
-    | PlaybackTimelineBackwards (List String)
+    | PlaybackRewindTimeline (List String)
     | PlaybackPlay
     | PlaybackPause
     | PlaybackSlide Int

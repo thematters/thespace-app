@@ -29,7 +29,6 @@ import Eth.Types exposing (Address)
 import Eth.Units exposing (EthUnit(..))
 import Eth.Utils exposing (add0x, addressToChecksumString)
 import Hex
-import Json.Decode as D
 import Regex
 import Time exposing (Posix)
 
