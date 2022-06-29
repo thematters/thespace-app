@@ -49,7 +49,6 @@ import Data
         , sizeToFloatSize
         , validIndex
         )
-import Dict
 import Model exposing (AppMode(..), Model)
 import Model.Playback as PB
 import Msg exposing (Msg(..))
@@ -329,7 +328,7 @@ playAgain =
     "pbPlayAgain" |> send
 
 
-ccToIdxCid : PB.ColorChangeCompatible compatible -> String
+ccToIdxCid : PB.ColorChange compatible -> String
 ccToIdxCid change =
     let
         idx =
@@ -341,7 +340,7 @@ ccToIdxCid change =
     idx ++ "," ++ cId
 
 
-timelineToIdxCidString : Array (PB.ColorChangeCompatible compatible) -> String
+timelineToIdxCidString : Array (PB.ColorChange compatible) -> String
 timelineToIdxCidString timeline =
     timeline |> Array.map ccToIdxCid |> Array.toList |> String.join ","
 

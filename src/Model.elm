@@ -57,7 +57,7 @@ initModel =
         , assetsInfList = InfiniteList.init
         }
     , acts = []
-    , assets = A.AssetsNotLoaded
+    , assets = A.init
     , notif = Just SplashNotif
     , queue = Dict.empty
     , playback = PB.init
@@ -241,8 +241,8 @@ initWatchIds =
     }
 
 
-responsiveMiniMapMode : Size -> MiniMapMode
-responsiveMiniMapMode ( _, winH ) =
+autoMiniMapMode : Size -> MiniMapMode
+autoMiniMapMode ( _, winH ) =
     if toFloat winH < 4 * miniMapHeight then
         CollapsedMiniMap
 
@@ -250,8 +250,8 @@ responsiveMiniMapMode ( _, winH ) =
         BirdeyeMiniMap
 
 
-responsiveSiebarMode : Size -> SidebarMode -> SidebarMode
-responsiveSiebarMode ( winW, _ ) ( _, infoType ) =
+autoSiebarMode : Size -> SidebarMode -> SidebarMode
+autoSiebarMode ( winW, _ ) ( _, infoType ) =
     if toFloat winW < 4 * sidebarWidth then
         ( CollapsedSidebar, infoType )
 

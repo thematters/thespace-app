@@ -1,35 +1,17 @@
 module Main exposing (main)
 
-import Array
 import Browser
 import Browser.Events as E
 import Canvas as C
 import Config exposing (..)
-import Contract.Space exposing (OwnPixelsResultPage)
 import Data exposing (..)
 import Dict
-import Eth.Types exposing (Address)
 import Html.Styled exposing (Html, toUnstyled)
 import InfiniteList
 import Json.Decode as D exposing (Decoder)
 import Json.Encode exposing (Value)
 import Model exposing (..)
-import Model.Assets
-    exposing
-        ( Assets(..)
-        , LoadedAssetsPage(..)
-        , LoadedAssetsPages
-        , LoadingAssets
-        , assetsFinishLoading
-        , initLoadingAssets
-        , sortAssetsResult
-        , updateAssetsByColor
-        , updateAssetsByPixel
-        , updateAssetsByPrice
-        , updateAssetsByTransfer
-        , updateAssetsByUbi
-        , withinGetOwnPixelLimit
-        )
+import Model.Assets as A
 import Model.Playback as PB
 import Msg exposing (Msg(..))
 import Rpc exposing (RpcResult(..))
@@ -171,7 +153,7 @@ update msg model =
                     { actsInfList = InfiniteList.init
                     , assetsInfList = InfiniteList.init
                     }
-                , assets = AssetsNotLoaded
+                , assets = A.init
                 , queue = Dict.empty
               }
             , case wallet of
@@ -299,9 +281,9 @@ update msg model =
                 m =
                     { model
                         | winSize = winSize
-                        , miniMapMode = responsiveMiniMapMode winSize
+                        , miniMapMode = autoMiniMapMode winSize
                         , sidebarMode =
-                            responsiveSiebarMode
+                            autoSiebarMode
                                 winSize
                                 model.sidebarMode
                         , sidebarInfLists =
@@ -642,53 +624,36 @@ update msg model =
 
         SidebarInfoSwitch mode ->
             let
-                ( uiMode, _ ) =
-                    model.sidebarMode
-
-                m =
-                    { model | sidebarMode = ( uiMode, mode ) }
+                newModel =
+                    { model
+                        | sidebarMode = ( Tuple.first model.sidebarMode, mode )
+                    }
             in
-            case ( mode, m.assets, m.wallet ) of
-                ( AssetsManager, AssetsNotLoaded, Wallet { address } ) ->
-                    requestOwnPixelsFirstPageOrNothing m address
+            case mode of
+                AssetsManager ->
+                    handleAssets newModel <| A.load newModel.blockNumber
 
                 _ ->
-                    ( m, Cmd.none )
+                    ( newModel, Cmd.none )
 
         LoadAssets ->
-            case ( model.sidebarMode, model.assets, model.wallet ) of
-                ( ( _, AssetsManager ), AssetsNotLoaded, Wallet { address } ) ->
-                    requestOwnPixelsFirstPageOrNothing model address
+            case model.sidebarMode of
+                ( _, AssetsManager ) ->
+                    handleAssets model <| A.load model.blockNumber
 
                 _ ->
                     ( model, Cmd.none )
 
         RefreshAssets ->
-            case ( model.sidebarMode, model.assets, model.wallet ) of
-                ( ( _, AssetsManager ), AssetsLoaded _, Wallet { address } ) ->
-                    requestOwnPixelsFirstPageOrNothing model address
+            case model.sidebarMode of
+                ( _, AssetsManager ) ->
+                    handleAssets model <| A.load model.blockNumber
 
                 _ ->
                     ( model, Cmd.none )
 
-        SortAssets sort ->
-            case model.assets of
-                AssetsLoaded assets ->
-                    let
-                        newList =
-                            assets.list
-                                |> sortAssetsResult sort assets.timeOrder
-                    in
-                    ( { model
-                        | assets =
-                            AssetsLoaded
-                                { assets | list = newList, sort = sort }
-                      }
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
+        SortAssets rank ->
+            ( { model | assets = model.assets |> A.sort rank }, Cmd.none )
 
         -- MiniMap
         MiniMapModeChange CollapsedMiniMap ->
@@ -707,8 +672,8 @@ update msg model =
                     ( { model
                         | mode = Realtime
                         , sidebarMode =
-                            responsiveSiebarMode model.winSize model.sidebarMode
-                        , miniMapMode = responsiveMiniMapMode model.winSize
+                            autoSiebarMode model.winSize model.sidebarMode
+                        , miniMapMode = autoMiniMapMode model.winSize
                         , notif = Nothing
                       }
                     , Cmd.none
@@ -903,36 +868,47 @@ handleMiniMapDragging m { dx, dy } =
     ( { m | canvas = canvas }, C.transform canvas )
 
 
-requestOwnPixelsFirstPageOrNothing : Model -> Maybe Address -> ( Model, Cmd msg )
-requestOwnPixelsFirstPageOrNothing m address =
-    case address of
-        Just addr ->
-            ( { m | assets = initLoadingAssets m.blockNumber m.assets }
-            , requestOwnPixelTestPage m.blockNumber addr
-            )
 
-        _ ->
-            ( m, Cmd.none )
+-- Assets Hanlder
+
+
+handleAssets : Model -> A.Handler -> ( Model, Cmd Msg )
+handleAssets model handler =
+    let
+        ( newAssets, action ) =
+            model.assets |> handler model.wallet
+    in
+    ( { model | assets = newAssets }, handleAssetsAction action )
+
+
+handleAssetsAction : A.Action -> Cmd Msg
+handleAssetsAction action =
+    case action of
+        A.LoadPage ( addr, bk, start ) ->
+            Rpc.getAssets addr bk getAssetsPageLen start
+
+        A.Actions actions ->
+            Cmd.batch <| List.map handleAssetsAction actions
+
+        A.NoAction ->
+            Cmd.none
 
 
 
 -- Playback Handler
 
 
-handlePlayback : Model -> (PB.Playback -> ( PB.Playback, PB.Action )) -> ( Model, Cmd Msg )
+handlePlayback : Model -> PB.Handler -> ( Model, Cmd Msg )
 handlePlayback model handler =
     let
         ( newPlayback, action ) =
-            model.playback |> handler
-
-        newModel =
-            { model | playback = newPlayback }
+            handler model.playback
     in
-    handlePlaybackPlayAction newModel action
+    handlePlaybackAction { model | playback = newPlayback } action
 
 
-handlePlaybackPlayAction : Model -> PB.Action -> ( Model, Cmd Msg )
-handlePlaybackPlayAction model action =
+handlePlaybackAction : Model -> PB.Action -> ( Model, Cmd Msg )
+handlePlaybackAction model action =
     case action of
         PB.LoadDeltas cids ->
             ( model, Rpc.getDeltas cids )
@@ -941,7 +917,10 @@ handlePlaybackPlayAction model action =
             ( model, C.initPlayback <| cidToSnapshotUri snapshot )
 
         PB.BuildRewindTimeline timeline ->
-            ( { model | mode = Playback, miniMapMode = CollapsedMiniMap }
+            ( { model
+                | mode = Playback
+                , miniMapMode = CollapsedMiniMap
+              }
             , C.playbackRewindTimeline timeline
             )
 
@@ -958,17 +937,16 @@ handlePlaybackPlayAction model action =
             ( model, C.playAgain )
 
         PB.SetSpeed speed ->
-            ( { model
-                | mode = Realtime
-                , sidebarMode =
-                    responsiveSiebarMode model.winSize model.sidebarMode
-                , miniMapMode = responsiveMiniMapMode model.winSize
-              }
-            , C.playbackChangeSpeed speed
-            )
+            ( model, C.playbackChangeSpeed speed )
 
         PB.ExitPlayback ->
-            ( model, C.endPlayback )
+            ( { model
+                | mode = Realtime
+                , sidebarMode = autoSiebarMode model.winSize model.sidebarMode
+                , miniMapMode = autoMiniMapMode model.winSize
+              }
+            , C.endPlayback
+            )
 
         PB.NoAction ->
             ( model, Cmd.none )
@@ -1166,9 +1144,7 @@ handleRpcMessageRecieved model msg =
         RpcLatestColorLog cs ->
             let
                 m =
-                    { model
-                        | playback = model.playback |> PB.addColorEvents cs
-                    }
+                    { model | playback = PB.addColorEvents cs model.playback }
 
                 newActs =
                     if Config.debug then
@@ -1259,41 +1235,28 @@ handleRpcMessageRecieved model msg =
                     { model
                         | acts = ColorAct c :: model.acts
                         , queue = model.queue |> Dict.remove c.index
+                        , assets = model.assets |> A.updateByColor c
                         , playback = model.playback |> PB.addColorEvent c
                     }
-
-                m2 =
-                    case model.selectCell of
-                        LoadedCell ( { index } as pxl, _, e ) ->
-                            if c.index == index then
-                                let
-                                    cell =
-                                        { pxl | color = c.color }
-                                in
-                                { m
-                                    | selectCell =
-                                        LoadedCell ( cell, PickNewColor, e )
-                                }
-
-                            else
-                                m
-
-                        _ ->
-                            m
-
-                newModel =
-                    case m2.assets of
-                        AssetsLoaded assets ->
-                            let
-                                newAssets =
-                                    updateAssetsByColor c assets
-                            in
-                            { m2 | assets = AssetsLoaded newAssets }
-
-                        _ ->
-                            m2
             in
-            ( newModel, C.update [ c ] )
+            ( case m.selectCell of
+                LoadedCell ( { index } as pxl, _, e ) ->
+                    if c.index == index then
+                        let
+                            cell =
+                                { pxl | color = c.color }
+                        in
+                        { m
+                            | selectCell = LoadedCell ( cell, PickNewColor, e )
+                        }
+
+                    else
+                        m
+
+                _ ->
+                    m
+            , C.update [ c ]
+            )
 
         RpcPriceEvent p ->
             let
@@ -1301,40 +1264,28 @@ handleRpcMessageRecieved model msg =
                     { model
                         | acts = PriceAct p :: model.acts
                         , queue = model.queue |> Dict.remove p.index
+                        , assets = model.assets |> A.updateByPrice p
                     }
-
-                m2 =
-                    case model.selectCell of
-                        LoadedCell ( { index } as pxl, _, e ) ->
-                            if p.index == index then
-                                let
-                                    newCell =
-                                        { pxl | price = p.price }
-                                in
-                                { m
-                                    | selectCell =
-                                        LoadedCell ( newCell, PickNewColor, e )
-                                }
-
-                            else
-                                m
-
-                        _ ->
-                            m
-
-                newModel =
-                    case m2.assets of
-                        AssetsLoaded assets ->
-                            let
-                                newAssets =
-                                    updateAssetsByPrice p assets
-                            in
-                            { m2 | assets = AssetsLoaded newAssets }
-
-                        _ ->
-                            m2
             in
-            ( newModel, Cmd.none )
+            ( case model.selectCell of
+                LoadedCell ( { index } as pxl, _, e ) ->
+                    if p.index == index then
+                        let
+                            newCell =
+                                { pxl | price = p.price }
+                        in
+                        { m
+                            | selectCell =
+                                LoadedCell ( newCell, PickNewColor, e )
+                        }
+
+                    else
+                        m
+
+                _ ->
+                    m
+            , Cmd.none
+            )
 
         RpcTransferEvent t ->
             let
@@ -1342,6 +1293,8 @@ handleRpcMessageRecieved model msg =
                     { model
                         | acts = TransferAct t :: model.acts
                         , queue = model.queue |> Dict.remove t.index
+                        , assets =
+                            model.assets |> A.updateByTransfer model.wallet t
                     }
 
                 m2 =
@@ -1387,18 +1340,6 @@ handleRpcMessageRecieved model msg =
                         _ ->
                             m
 
-                newModel =
-                    case ( m2.wallet, m2.assets ) of
-                        ( Wallet { address }, AssetsLoaded assets ) ->
-                            let
-                                newAssets =
-                                    updateAssetsByTransfer address t assets
-                            in
-                            { m2 | assets = AssetsLoaded newAssets }
-
-                        _ ->
-                            m2
-
                 cmd =
                     case model.wallet of
                         Wallet { address } ->
@@ -1417,7 +1358,7 @@ handleRpcMessageRecieved model msg =
                         _ ->
                             Cmd.none
             in
-            ( newModel, cmd )
+            ( m2, cmd )
 
         RpcTaxEvent tax ->
             let
@@ -1461,43 +1402,30 @@ handleRpcMessageRecieved model msg =
         RpcUbiEvent ubi ->
             let
                 m =
-                    { model | acts = UbiAct ubi :: model.acts }
-
-                m2 =
-                    case model.selectCell of
-                        LoadedCell ( { index } as pxl, s, e ) ->
-                            if index == ubi.index then
-                                let
-                                    newCell =
-                                        { pxl | ubi = zeroPrice }
-                                in
-                                { m
-                                    | selectCell = LoadedCell ( newCell, s, e )
-                                }
-
-                            else
-                                m
-
-                        _ ->
-                            m
-
-                newModel =
-                    case ( model.wallet, model.assets ) of
-                        ( Wallet { address }, AssetsLoaded assets ) ->
-                            if address == Just ubi.collector then
-                                let
-                                    newAssets =
-                                        assets |> updateAssetsByUbi ubi
-                                in
-                                { m2 | assets = AssetsLoaded newAssets }
-
-                            else
-                                m2
-
-                        _ ->
-                            m2
+                    { model
+                        | acts = UbiAct ubi :: model.acts
+                        , assets =
+                            model.assets |> A.updateByUbi model.wallet ubi
+                    }
             in
-            ( newModel, Cmd.none )
+            ( case model.selectCell of
+                LoadedCell ( { index } as pxl, s, e ) ->
+                    if index == ubi.index then
+                        let
+                            newCell =
+                                { pxl | ubi = zeroPrice }
+                        in
+                        { m
+                            | selectCell = LoadedCell ( newCell, s, e )
+                        }
+
+                    else
+                        m
+
+                _ ->
+                    m
+            , Cmd.none
+            )
 
         RpcRegistryTransferEvent rt ->
             let
@@ -1584,16 +1512,7 @@ handleRpcMessageRecieved model msg =
         RpcPixel pixel ->
             let
                 m =
-                    case model.assets of
-                        AssetsLoaded assets ->
-                            let
-                                newAssets =
-                                    updateAssetsByPixel pixel assets
-                            in
-                            { model | assets = AssetsLoaded newAssets }
-
-                        _ ->
-                            model
+                    { model | assets = model.assets |> A.updateByPixel pixel }
             in
             case model.selectCell of
                 LoadingCell index ->
@@ -1622,229 +1541,14 @@ handleRpcMessageRecieved model msg =
                 _ ->
                     ( m, Cmd.none )
 
-        RpcOwnPixels page ->
-            case ( model.wallet, model.assets ) of
-                ( Wallet { address }, AssetsLoading loadingInfo ) ->
-                    case address of
-                        Just addr ->
-                            handleGetOwnPixelPage model addr loadingInfo page
-
-                        _ ->
-                            ( model, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
+        RpcAssets page ->
+            handleAssets model <| A.addPage page
 
         RpcDeltaCids cids ->
             handlePlayback model <| PB.initDeltaCids cids
 
         RpcError err ->
             ( { model | acts = ActError err :: model.acts }, Cmd.none )
-
-
-
--- Rpc Handler Helpers
-
-
-requestOwnPixelTestPage : Maybe BlockNumber -> Address -> Cmd msg
-requestOwnPixelTestPage bk addr =
-    Rpc.getOwnPixels bk addr getOwnPixelPage 0
-
-
-handleGetOwnPixelPage : Model -> Address -> LoadingAssets -> OwnPixelsResultPage -> ( Model, Cmd msg )
-handleGetOwnPixelPage model addr loadingInfo page =
-    if justOnePage page then
-        handleGetOwnPixelJustOnePage model loadingInfo page
-
-    else if firstPage page then
-        let
-            newLoadingInfo =
-                if withinGetOwnPixelLimit page.total then
-                    addOnePage loadingInfo page
-
-                else
-                    loadingInfo
-
-            newModel =
-                if withinGetOwnPixelLimit page.total then
-                    { model | assets = AssetsLoading newLoadingInfo }
-
-                else
-                    model
-        in
-        handleGetOwnPixeRequestAllPages newModel newLoadingInfo addr page
-
-    else
-        handleGetOwnPixeAddOnePage model loadingInfo page
-
-
-handleGetOwnPixelJustOnePage : Model -> LoadingAssets -> OwnPixelsResultPage -> ( Model, Cmd msg )
-handleGetOwnPixelJustOnePage model _ ({ pixels } as page) =
-    ( { model | assets = assetsFinishLoading pixels page model.assets }
-    , Cmd.none
-    )
-
-
-handleGetOwnPixeRequestAllPages : Model -> LoadingAssets -> Address -> OwnPixelsResultPage -> ( Model, Cmd msg )
-handleGetOwnPixeRequestAllPages model { block, loaded, sort } addr page =
-    let
-        requestPage x =
-            case x of
-                Offset i ->
-                    Rpc.getOwnPixels block addr getOwnPixelPage i
-
-                _ ->
-                    Cmd.none
-    in
-    case loaded of
-        Nothing ->
-            let
-                offsets =
-                    calculateOffsets page.total
-            in
-            ( { model
-                | assets =
-                    AssetsLoading
-                        { block = block
-                        , loaded = Just offsets
-                        , sort = sort
-                        }
-              }
-            , Cmd.batch <| List.map requestPage <| Array.toList offsets
-            )
-
-        Just loaded_ ->
-            ( model, Cmd.batch <| List.map requestPage <| Array.toList loaded_ )
-
-
-handleGetOwnPixeAddOnePage : Model -> LoadingAssets -> OwnPixelsResultPage -> ( Model, Cmd msg )
-handleGetOwnPixeAddOnePage model info page =
-    let
-        newLoadingInfo =
-            addOnePage info page
-
-        m =
-            { model | assets = AssetsLoading newLoadingInfo }
-    in
-    if allPageLoaded newLoadingInfo.loaded then
-        case newLoadingInfo.loaded of
-            Nothing ->
-                ( m, Cmd.none )
-
-            Just loaded ->
-                let
-                    aux a b =
-                        case a of
-                            Offset _ ->
-                                b
-
-                            Page p ->
-                                b ++ p.pixels
-
-                    pixels =
-                        Array.foldl aux [] loaded
-                in
-                ( { m | assets = assetsFinishLoading pixels page model.assets }
-                , Cmd.none
-                )
-
-    else
-        ( m, Cmd.none )
-
-
-allPageLoaded : LoadedAssetsPages -> Bool
-allPageLoaded loaded_ =
-    let
-        isOffset x =
-            case x of
-                Offset _ ->
-                    True
-
-                _ ->
-                    False
-    in
-    case loaded_ of
-        Nothing ->
-            False
-
-        Just loaded ->
-            loaded |> Array.filter isOffset |> Array.isEmpty
-
-
-addOnePage : LoadingAssets -> OwnPixelsResultPage -> LoadingAssets
-addOnePage loadingInfo page =
-    let
-        pageN =
-            whichPage page
-
-        page_ =
-            Page <| { page | pixels = page.pixels }
-
-        offsets =
-            case loadingInfo.loaded of
-                Nothing ->
-                    calculateOffsets page.total
-
-                Just loaded ->
-                    loaded
-    in
-    { loadingInfo | loaded = Just <| Array.set pageN page_ offsets }
-
-
-justOnePage : OwnPixelsResultPage -> Bool
-justOnePage page =
-    page.total <= page.limit
-
-
-firstPage : OwnPixelsResultPage -> Bool
-firstPage page =
-    page.offset == 0
-
-
-whichPage : OwnPixelsResultPage -> Int
-whichPage page =
-    let
-        realOffset =
-            if withinGetOwnPixelLimit page.total then
-                page.offset
-
-            else
-                page.offset - page.total + getOwnPixelLimit
-    in
-    realOffset // getOwnPixelPage
-
-
-calculateOffsets : Int -> Array.Array LoadedAssetsPage
-calculateOffsets total =
-    if total > getOwnPixelLimit then
-        let
-            pageNum =
-                calculatePageNum getOwnPixelLimit getOwnPixelPage
-
-            start =
-                total - getOwnPixelLimit
-        in
-        Array.initialize pageNum (\i -> Offset <| i * getOwnPixelPage + start)
-
-    else
-        let
-            pageNum =
-                calculatePageNum total getOwnPixelPage
-        in
-        Array.initialize pageNum (\i -> Offset <| i * getOwnPixelPage)
-
-
-calculatePageNum : Int -> Int -> Int
-calculatePageNum totalNum pageLen =
-    let
-        pageNum =
-            totalNum // pageLen
-    in
-    if pageNum * pageLen < totalNum then
-        inc pageNum
-
-    else
-        pageNum
 
 
 

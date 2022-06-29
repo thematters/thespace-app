@@ -4,7 +4,7 @@ import Array
 import Config
     exposing
         ( cellModalWidth
-        , getOwnPixelLimit
+        , getAssetsLimit
         , lightColor
         , price
         , sidebarWidth
@@ -62,24 +62,7 @@ import Model
         , SidebarUIMode(..)
         , TaxInfo
         )
-import Model.Assets
-    exposing
-        ( AssetChangeKind(..)
-        , Assets(..)
-        , AssetsChanges
-        , AssetsCollectedIds
-        , AssetsFetched
-        , AssetsSort
-        , AssetsSortType(..)
-        , LoadedAssetsData
-        , LoadedAssetsPage(..)
-        , getFetchedPixel
-        , loadedAssetsChanged
-        , loadedAssetsTotalPrice
-        , loadedAssetsTotalTax
-        , loadedAssetsTotalUbi
-        , pixelCollected
-        )
+import Model.Assets as A
 import Model.Playback as PB
 import Msg exposing (Msg(..))
 import View.Common exposing (..)
@@ -230,7 +213,7 @@ scrollArea scrollH items infList itemView msg =
         ]
 
 
-viewSidebar : ( AppMode, SidebarMode, Size ) -> PB.Playback -> WalletInfo -> List Activity -> Assets -> SidebarInfLists -> TaxInfo -> Html Msg
+viewSidebar : ( AppMode, SidebarMode, Size ) -> PB.Playback -> WalletInfo -> List Activity -> A.Assets -> SidebarInfLists -> TaxInfo -> Html Msg
 viewSidebar ( appMode, ( uiMode, infoType ), winSize ) playback wallet acts assets { actsInfList, assetsInfList } { mintTax } =
     let
         modalW =
@@ -504,7 +487,7 @@ acctInfo wallet =
         ]
 
 
-switch : WalletInfo -> SidebarInfoType -> Assets -> Html Msg
+switch : WalletInfo -> SidebarInfoType -> A.Assets -> Html Msg
 switch wallet activeInfoType assets =
     let
         style_ =
@@ -556,8 +539,8 @@ switch wallet activeInfoType assets =
 
         yourPixelsChanged =
             case assets of
-                AssetsLoaded ast ->
-                    loadedAssetsChanged ast
+                A.AssetsLoaded ast ->
+                    A.changed ast
 
                 _ ->
                     False
@@ -736,11 +719,11 @@ viewActEntry wallet mintTax log =
             div [ cssLog False ] <| errorLog err
 
 
-viewAssets : Float -> WalletInfo -> Inf.Model -> Assets -> Html Msg
+viewAssets : Float -> WalletInfo -> Inf.Model -> A.Assets -> Html Msg
 viewAssets modalH wallet actInfList assets =
     if walletConnected wallet then
         case assets of
-            AssetsNotLoaded ->
+            A.AssetsNotLoaded ->
                 placeholder <|
                     [ div [ css [ displayFlex, flexDirection column ] ]
                         [ div
@@ -752,7 +735,7 @@ viewAssets modalH wallet actInfList assets =
                         ]
                     ]
 
-            AssetsLoading { loaded } ->
+            A.AssetsLoading { loaded } ->
                 let
                     per =
                         case loaded of
@@ -763,7 +746,7 @@ viewAssets modalH wallet actInfList assets =
                                 let
                                     hasLoaded x =
                                         case x of
-                                            Page _ ->
+                                            A.Page _ ->
                                                 True
 
                                             _ ->
@@ -799,7 +782,7 @@ viewAssets modalH wallet actInfList assets =
                         ]
                     ]
 
-            AssetsLoaded ast ->
+            A.AssetsLoaded ast ->
                 if List.length ast.list == 0 then
                     placeholder <| [ textDiv "You don't have any pixels yet." ]
 
@@ -813,8 +796,8 @@ viewAssets modalH wallet actInfList assets =
         placeholder [ textDiv "Please connect wallet first." ]
 
 
-viewAssetOps : LoadedAssetsData -> Html Msg
-viewAssetOps ({ total, exceededLimit, sort } as assets) =
+viewAssetOps : A.LoadedData -> Html Msg
+viewAssetOps ({ total, exceededLimit, rank } as assets) =
     let
         bottomMargin =
             10
@@ -833,7 +816,7 @@ viewAssetOps ({ total, exceededLimit, sort } as assets) =
             refresh_ iconGreen
 
         refresh asts =
-            if loadedAssetsChanged asts then
+            if A.changed asts then
                 changedRefresh
 
             else
@@ -851,7 +834,7 @@ viewAssetOps ({ total, exceededLimit, sort } as assets) =
             if exceededLimit then
                 let
                     showingStr =
-                        "(showing " ++ String.fromInt getOwnPixelLimit ++ ")"
+                        "(showing " ++ String.fromInt getAssetsLimit ++ ")"
 
                     showing =
                         smallTextDiv <| grayDiv <| showingStr
@@ -869,18 +852,18 @@ viewAssetOps ({ total, exceededLimit, sort } as assets) =
                 [ secDiv lbl, priceTagNormal ttl ]
 
         totalInfo =
-            case sort of
-                ( AssetsSortTime, _ ) ->
+            case rank of
+                ( A.RankTime, _ ) ->
                     totalCount total
 
-                ( AssetsSortPrice, _ ) ->
-                    totalMonetaryInfo "Total" <| loadedAssetsTotalPrice assets
+                ( A.RankPrice, _ ) ->
+                    totalMonetaryInfo "Total" <| A.totalPrice assets
 
-                ( AssetsSortTax, _ ) ->
-                    totalMonetaryInfo "Tax ≈" <| loadedAssetsTotalTax assets
+                ( A.RankTax, _ ) ->
+                    totalMonetaryInfo "Tax ≈" <| A.totalTax assets
 
-                ( AssetsSortUbi, _ ) ->
-                    totalMonetaryInfo "Inc. ≈" <| loadedAssetsTotalUbi assets
+                ( A.RankUbi, _ ) ->
+                    totalMonetaryInfo "Inc. ≈" <| A.totalUbi assets
 
         info =
             div
@@ -901,11 +884,11 @@ viewAssetOps ({ total, exceededLimit, sort } as assets) =
             , margin4 (px 0) (px edge) (px bottomMargin) (px edge)
             ]
         ]
-        [ viewAssetsSorts sort, info ]
+        [ viewRanks rank, info ]
 
 
-viewAssetsSorts : AssetsSort -> Html Msg
-viewAssetsSorts ( sType, sOrder ) =
+viewRanks : A.Rank -> Html Msg
+viewRanks ( sType, sOrder ) =
     let
         item sortType label =
             div
@@ -954,36 +937,36 @@ viewAssetsSorts ( sType, sOrder ) =
             , marginBottom (px 10)
             ]
         ]
-        [ item AssetsSortTime "Recent"
-        , item AssetsSortPrice "Price"
-        , item AssetsSortTax "Tax"
-        , item AssetsSortUbi "Inc."
+        [ item A.RankTime "Recent"
+        , item A.RankPrice "Price"
+        , item A.RankTax "Tax"
+        , item A.RankUbi "Inc."
         ]
 
 
-viewAssetsResult : Float -> LoadedAssetsData -> Inf.Model -> Html Msg
-viewAssetsResult modalH { sort, changes, fetchedPixels, collectedIds, list } assetsInfList =
+viewAssetsResult : Float -> A.LoadedData -> Inf.Model -> Html Msg
+viewAssetsResult modalH { rank, changes, fetchedPixels, collectedIds, list } assetsInfList =
     let
         scrollH =
             modalH - (heightWithoutLogs + edge + assetOpHeight)
 
         itemView =
             \_ _ p ->
-                viewAssetResultEntry sort changes fetchedPixels collectedIds p
+                viewAssetResultEntry rank changes fetchedPixels collectedIds p
                     |> toUnstyled
     in
     scrollArea scrollH list assetsInfList itemView ScrollAssets
 
 
-viewAssetResultEntry : AssetsSort -> AssetsChanges -> AssetsFetched -> AssetsCollectedIds -> Pixel -> Html Msg
+viewAssetResultEntry : A.Rank -> A.Changes -> A.AssetsFetched -> A.CollectedIds -> Pixel -> Html Msg
 viewAssetResultEntry ( sortType, _ ) changes fetchedPixels collectedIds pixel =
     let
         ( pxl, tradeFlag ) =
             case Dict.get pixel.index changes of
-                Just Bought ->
+                Just A.Bought ->
                     let
                         fetchPxl =
-                            case getFetchedPixel pixel.index fetchedPixels of
+                            case A.getFetchedPixel pixel.index fetchedPixels of
                                 Just p ->
                                     p
 
@@ -992,10 +975,10 @@ viewAssetResultEntry ( sortType, _ ) changes fetchedPixels collectedIds pixel =
                     in
                     ( fetchPxl, boldTextDiv <| smallTextDiv <| greenDiv "New" )
 
-                Just Sold ->
+                Just A.Sold ->
                     ( pixel, boldTextDiv <| smallTextDiv <| orangeDiv "Sold" )
 
-                Just Updated ->
+                Just A.Updated ->
                     ( pixel, smallTextDiv <| greenDiv "Updated" )
 
                 Nothing ->
@@ -1003,16 +986,16 @@ viewAssetResultEntry ( sortType, _ ) changes fetchedPixels collectedIds pixel =
 
         ( extraTag, value ) =
             case sortType of
-                AssetsSortTax ->
+                A.RankTax ->
                     ( secDiv "Tax ≈", priceTag pxl.tax )
 
-                AssetsSortUbi ->
-                    ( if pixelCollected pxl.index collectedIds then
+                A.RankUbi ->
+                    ( if A.pixelCollected pxl.index collectedIds then
                         phantomDiv
 
                       else
                         secDiv "Income ≈"
-                    , if pixelCollected pxl.index collectedIds then
+                    , if A.pixelCollected pxl.index collectedIds then
                         div
                             [ css [ color green ]
                             , title <|
@@ -1156,8 +1139,8 @@ progress pb =
         input
             [ type_ "range"
             , Attributes.min <| String.fromInt 0
-            , Attributes.max <| String.fromInt <| PB.getMaxProgress pb
-            , value <| String.fromInt <| PB.getProgress pb
+            , Attributes.max <| String.fromInt <| PB.maxProgress pb
+            , value <| String.fromInt <| PB.currentProgress pb
             , onInput
                 (\v ->
                     case String.toInt v of
@@ -1191,7 +1174,7 @@ circleSpeed pb =
             , title title_
             , onClick PlaybackCircleSpeed
             ]
-            [ text <| PB.speedToString <| PB.getSpeed pb ]
+            [ text <| PB.speedToString <| PB.currentSpeed pb ]
 
 
 exitPlayback : Html Msg

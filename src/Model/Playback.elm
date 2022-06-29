@@ -1,19 +1,19 @@
 module Model.Playback exposing
     ( Action(..)
-    , ColorChangeCompatible
+    , ColorChange
     , DeltaData
+    , Handler
     , Playback
     , Speed(..)
     , Timeline
     , addColorEvent
     , addColorEvents
     , addDeltaData
+    , currentProgress
+    , currentSpeed
     , deltaDataDecoder
     , enter
     , exit
-    , getMaxProgress
-    , getProgress
-    , getSpeed
     , init
     , initDeltaCids
     , jumpTo
@@ -114,11 +114,11 @@ type alias ColorChangeDelta =
 
 type alias ColorChangeDeltaBlock =
     { blockNumber : BlockNumber
-    , changes : List ColorChange
+    , changes : List ColorChangeBare
     }
 
 
-type alias ColorChange =
+type alias ColorChangeBare =
     { index : Index
     , color : ColorId
     }
@@ -131,12 +131,12 @@ type alias ColorChangeWithMeta =
     }
 
 
-type alias ColorChangeCompatible compatible =
-    { compatible | index : Int, color : Int }
+type alias ColorChange cc =
+    { cc | index : Int, color : Int }
 
 
-type alias Timeline compatible =
-    Array (ColorChangeCompatible compatible)
+type alias Timeline t =
+    Array (ColorChange t)
 
 
 type alias ForwardTimeline =
@@ -144,7 +144,7 @@ type alias ForwardTimeline =
 
 
 type alias RewindTimeline =
-    Array ColorChange
+    Array ColorChangeBare
 
 
 type Action
@@ -152,10 +152,10 @@ type Action
     | InitSnapshot Cid
     | BuildRewindTimeline ForwardTimeline
     | EnterPlayback
-    | PlayAgain
     | Forward ForwardTimeline
     | Rewind RewindTimeline
     | SetSpeed Speed
+    | PlayAgain
     | ExitPlayback
     | NoAction
 
@@ -314,7 +314,7 @@ setRewindTimeline colorIds pb =
                     in
                     { index = index, color = cId }
                 )
-                colorIds
+                cs
                 (Array.toList tl)
                 |> Array.fromList
     in
@@ -367,8 +367,8 @@ playing pb =
             False
 
 
-getProgress : Playback -> Int
-getProgress pb =
+currentProgress : Playback -> Progress
+currentProgress pb =
     case pb of
         Ready { status } ->
             case status of
@@ -382,18 +382,18 @@ getProgress pb =
             0
 
 
-getMaxProgress : Playback -> Int
-getMaxProgress pb =
+maxProgress : Playback -> Progress
+maxProgress pb =
     case pb of
         Ready { timeline } ->
-            maxProgress timeline
+            limit timeline
 
         _ ->
             0
 
 
-getSpeed : Playback -> Speed
-getSpeed pb =
+currentSpeed : Playback -> Speed
+currentSpeed pb =
     case pb of
         Ready { speed } ->
             speed
@@ -428,7 +428,7 @@ play pb =
         Ready ({ status, timeline } as data) ->
             case status of
                 Paused i ->
-                    if i == maxProgress timeline then
+                    if i == limit timeline then
                         ( Ready { data | status = Playing 0 }, PlayAgain )
 
                     else
@@ -470,7 +470,7 @@ tick pb =
         Ready ({ status, timeline } as data) ->
             case status of
                 Playing i ->
-                    if i == maxProgress timeline then
+                    if i == limit timeline then
                         ( Ready { data | status = Paused i }
                         , NoAction
                         )
@@ -556,14 +556,14 @@ stepLenght =
     120
 
 
-maxProgress : ForwardTimeline -> Int
-maxProgress =
+limit : ForwardTimeline -> Progress
+limit =
     Array.length >> dec
 
 
-safeProgress : ForwardTimeline -> Int -> Int
+safeProgress : ForwardTimeline -> Progress -> Progress
 safeProgress =
-    maxProgress >> clamp 0
+    limit >> clamp 0
 
 
 finishLoading : LoadingData -> LoadedData
@@ -660,7 +660,7 @@ updateTimeline events oldTimeline =
     events |> Array.map eventToInfoColorChange |> Array.append oldTimeline
 
 
-toInfoColorChange : BlockNumber -> ColorChange -> ColorChangeWithMeta
+toInfoColorChange : BlockNumber -> ColorChangeBare -> ColorChangeWithMeta
 toInfoColorChange blockNumber { index, color } =
     { blockNumber = blockNumber, index = index, color = color }
 
@@ -746,21 +746,13 @@ deltaBlockDecoder : D.Decoder ColorChangeDeltaBlock
 deltaBlockDecoder =
     D.map2
         ColorChangeDeltaBlock
+        --    (D.at [ "time" ] Iso8601.decoder)
         (D.at [ "bk" ] D.int)
         (D.at [ "cs" ] (D.list colorChangeDecoder))
 
 
-
---deltaBlockDecoder : D.Decoder ColorChangeDeltaBlock
---deltaBlockDecoder =
---D.map3 ColorChangeDeltaBlock
---    (D.at [ "time" ] Iso8601.decoder)
---    (D.at [ "bk" ] D.int)
---    (D.at [ "cs" ] (D.list colorChangeDecoder))
-
-
-colorChangeDecoder : D.Decoder ColorChange
+colorChangeDecoder : D.Decoder ColorChangeBare
 colorChangeDecoder =
-    D.map2 ColorChange
+    D.map2 ColorChangeBare
         (D.at [ "i" ] D.int)
         (D.at [ "c" ] D.int)

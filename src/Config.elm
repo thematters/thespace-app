@@ -251,8 +251,8 @@ inputPriceDecimalDigits =
     2
 
 
-getOwnPixelPage : Int
-getOwnPixelPage =
+getAssetsPageLen : Int
+getAssetsPageLen =
     if debug then
         5
 
@@ -260,15 +260,15 @@ getOwnPixelPage =
         100
 
 
-getOwnPixelLimit : Int
-getOwnPixelLimit =
+getAssetsLimit : Int
+getAssetsLimit =
     (if debug then
         101
 
      else
         10000
     )
-        |> max getOwnPixelPage
+        |> max getAssetsPageLen
 
 
 

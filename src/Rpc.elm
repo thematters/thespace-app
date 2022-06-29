@@ -5,6 +5,7 @@ port module Rpc exposing
     , decodeMessage
     , defaultRpcErrorCode
     , getAccount
+    , getAssets
     , getBlockNumber
     , getColorHistory
     , getDeltas
@@ -16,7 +17,6 @@ port module Rpc exposing
     , getLatestTransferEvents
     , getLatestUbiEvents
     , getMintTax
-    , getOwnPixels
     , getPixel
     , getTaxRate
     , getTokenInfo
@@ -81,7 +81,6 @@ import Eth.Units exposing (EthUnit(..))
 import Eth.Utils exposing (add0x, addressToString, toAddress, unsafeToHex)
 import Hex
 import Http
-import Iso8601
 import Json.Decode as D
 import Json.Encode as E exposing (Value)
 import Model.Playback exposing (deltaDataDecoder)
@@ -139,7 +138,7 @@ type RpcResult
     | RpcUbiEvent Space.UbiEvent
     | RpcRegistryTransferEvent Registry.RegistryTransferEvent
     | RpcPixel Space.Pixel
-    | RpcOwnPixels Space.OwnPixelsResultPage
+    | RpcAssets Space.AssetsResultPage
     | RpcTokenInfo TokenInfo
     | RpcDeltaCids (List Snapper.Cid)
     | RpcError RpcErrorData
@@ -147,10 +146,6 @@ type RpcResult
 
 type alias SubId =
     Int
-
-
-type alias TreasuryShare =
-    Price
 
 
 type alias RpcCallData =
@@ -180,7 +175,7 @@ type MessageId
     | LatestTaxEvents
     | LatestUbiEvents
     | GetPixel
-    | GetOwnPixels Int
+    | GetAssets Int
     | GetBalance Address
     | GetAllowance Address
 
@@ -215,7 +210,7 @@ toPixel taxRate bkNum pixelBigInt =
     }
 
 
-toPixelsByOwner : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixelsByOwner -> Space.OwnPixelsResultPage
+toPixelsByOwner : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixelsByOwner -> Space.AssetsResultPage
 toPixelsByOwner taxRate bkNum pixelsByOwner =
     { total = pixelsByOwner.total |> unsafeBigIntToInt
     , limit = pixelsByOwner.limit |> unsafeBigIntToInt
@@ -276,7 +271,7 @@ messageIdEncoder msgId =
         GetAllowance addr ->
             E.string <| "alw-" ++ addressToString addr
 
-        GetOwnPixels offset ->
+        GetAssets offset ->
             E.string <| "ops-" ++ String.fromInt offset
 
         GetInitMap ->
@@ -416,7 +411,7 @@ messageIdDecoder =
                     else if String.startsWith "ops-" s then
                         case String.toInt <| String.dropLeft 4 s of
                             Just offset ->
-                                GetOwnPixels offset
+                                GetAssets offset
 
                             Nothing ->
                                 GetBlockNumber
@@ -524,9 +519,9 @@ resultDecoder id taxRate blockNum =
             res Space.getPixelDecoder
                 |> D.map (toPixel taxRate blockNum >> RpcPixel)
 
-        GetOwnPixels _ ->
+        GetAssets _ ->
             res Space.getPixelsByOwnerDecoder
-                |> D.map (toPixelsByOwner taxRate blockNum >> RpcOwnPixels)
+                |> D.map (toPixelsByOwner taxRate blockNum >> RpcAssets)
 
 
 newHeadDecoder : D.Decoder BlockNumber
@@ -838,8 +833,8 @@ getPixel index =
     call GetPixel <| Space.getPixel contracts.space <| BigInt.fromInt index
 
 
-getOwnPixels : Maybe BlockNumber -> Address -> Int -> Int -> Cmd msg
-getOwnPixels bk_ owner limit_ offset_ =
+getAssets : Address -> Maybe BlockNumber -> Int -> Int -> Cmd msg
+getAssets owner bk_ limit_ offset_ =
     let
         limit =
             BigInt.fromInt limit_
@@ -851,7 +846,7 @@ getOwnPixels bk_ owner limit_ offset_ =
             Space.getPixelsByOwner contracts.space owner limit offset
 
         msgId =
-            GetOwnPixels offset_
+            GetAssets offset_
     in
     case bk_ of
         Just bk ->

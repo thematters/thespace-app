@@ -30,7 +30,6 @@ import Eth.Units exposing (EthUnit(..))
 import Eth.Utils exposing (add0x, addressToChecksumString)
 import Hex
 import Regex
-import Time exposing (Posix)
 
 
 

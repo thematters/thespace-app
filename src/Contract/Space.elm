@@ -6,10 +6,10 @@
 
 
 module Contract.Space exposing
-    ( ColorEvent
+    ( AssetsResultPage
+    , ColorEvent
     , GetPixel
     , GetPixelsByOwner
-    , OwnPixelsResultPage
     , Pixel
     , PriceEvent
     , TaxEvent
@@ -133,7 +133,7 @@ type alias Pixel =
     }
 
 
-type alias OwnPixelsResultPage =
+type alias AssetsResultPage =
     { total : Int
     , limit : Int
     , offset : Int

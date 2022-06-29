@@ -21,7 +21,7 @@ import Model
         , SidebarInfoType(..)
         , SidebarUIMode(..)
         )
-import Model.Assets exposing (AssetsSort)
+import Model.Assets exposing (Rank)
 import Model.Playback exposing (DeltaData)
 
 
@@ -58,7 +58,7 @@ type Msg
     | SidebarInfoSwitch SidebarInfoType
     | ScrollActivity InfiniteList.Model
     | ScrollAssets InfiniteList.Model
-    | SortAssets AssetsSort
+    | SortAssets Rank
     | LoadAssets
     | RefreshAssets
       -- Cell Ops
