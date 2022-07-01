@@ -5,9 +5,17 @@
 -}
 
 
-module Contract.TheSpace exposing
-    ( GetPixel
+module Contract.Space exposing
+    ( AssetsResultPage
+    , ColorEvent
+    , GetPixel
     , GetPixelsByOwner
+    , Pixel
+    , PriceEvent
+    , TaxEvent
+    , TransferEvent
+    , TreasuryShare
+    , UbiEvent
     , bid
     , colorDecoder
     , colorLogsDecoder
@@ -34,21 +42,103 @@ module Contract.TheSpace exposing
     )
 
 import BigInt exposing (BigInt)
-import Data
-    exposing
-        ( ColorEvent
-        , Price
-        , PriceEvent
-        , TaxEvent
-        , TransferEvent
-        , UbiEvent
-        , bigIntAsIntDecoder
-        )
+import Contract.Util exposing (bigIntAsIntDecoder)
 import Eth.Abi.Decode as AD
 import Eth.Abi.Encode as AE
 import Eth.Decode as ED
 import Eth.Types exposing (Address, Call)
 import Json.Decode as D
+
+
+
+-- Types
+
+
+type alias Price =
+    BigInt
+
+
+type alias TreasuryShare =
+    BigInt
+
+
+type alias BlockNumber =
+    Int
+
+
+type alias Index =
+    Int
+
+
+type alias ColorId =
+    Int
+
+
+type alias ColorEvent =
+    { blockNumber : Int
+    , index : Int
+    , owner : Address
+    , color : Int
+    , removed : Bool
+    }
+
+
+type alias PriceEvent =
+    { blockNumber : Int
+    , index : Int
+    , owner : Address
+    , price : Price
+    , removed : Bool
+    }
+
+
+type alias TransferEvent =
+    { blockNumber : Int
+    , index : Int
+    , from : Address
+    , to : Address
+    , amount : Price
+    , removed : Bool
+    }
+
+
+type alias TaxEvent =
+    { blockNumber : Int
+    , index : Int
+    , payer : Address
+    , amount : BigInt
+    , removed : Bool
+    }
+
+
+type alias UbiEvent =
+    { blockNumber : Int
+    , index : Int
+    , collector : Address
+    , amount : BigInt
+    , removed : Bool
+    }
+
+
+type alias Pixel =
+    { index : Index
+    , owner : Address
+    , price : Price
+    , color : ColorId
+    , ubi : Price
+    , tax : Price
+    , lastTaxBK : BlockNumber
+    , ownerBalance : Maybe Price
+    , ownerAllowance : Maybe Price
+    }
+
+
+type alias AssetsResultPage =
+    { total : Int
+    , limit : Int
+    , offset : Int
+    , pixels : List Pixel
+    }
 
 
 
@@ -309,26 +399,26 @@ ubiDecoder =
     taxUbiDecoder UbiEvent
 
 
-colorLogsDecoder : D.Decoder (List (Maybe ColorEvent))
+colorLogsDecoder : D.Decoder (List ColorEvent)
 colorLogsDecoder =
-    D.list (D.maybe colorDecoder)
+    D.list colorDecoder
 
 
-priceLogsDecoder : D.Decoder (List (Maybe PriceEvent))
+priceLogsDecoder : D.Decoder (List PriceEvent)
 priceLogsDecoder =
-    D.list (D.maybe priceDecoder)
+    D.list priceDecoder
 
 
-transferLogsDecoder : D.Decoder (List (Maybe TransferEvent))
+transferLogsDecoder : D.Decoder (List TransferEvent)
 transferLogsDecoder =
-    D.list (D.maybe transferDecoder)
+    D.list transferDecoder
 
 
-taxLogsDecoder : D.Decoder (List (Maybe TaxEvent))
+taxLogsDecoder : D.Decoder (List TaxEvent)
 taxLogsDecoder =
-    D.list (D.maybe taxDecoder)
+    D.list taxDecoder
 
 
-ubiLogsDecoder : D.Decoder (List (Maybe UbiEvent))
+ubiLogsDecoder : D.Decoder (List UbiEvent)
 ubiLogsDecoder =
-    D.list (D.maybe ubiDecoder)
+    D.list ubiDecoder

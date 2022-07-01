@@ -1,18 +1,22 @@
 port module Rpc exposing
-    ( approveAllBalance
+    ( RpcResult(..)
+    , approveAllBalance
     , collectUbi
     , decodeMessage
+    , defaultRpcErrorCode
     , getAccount
+    , getAssets
     , getBlockNumber
     , getColorHistory
+    , getDeltas
     , getInitMap
     , getLatestColorEvents
+    , getLatestDeltaCids
     , getLatestPriceEvents
     , getLatestTaxEvents
     , getLatestTransferEvents
     , getLatestUbiEvents
     , getMintTax
-    , getOwnPixels
     , getPixel
     , getTaxRate
     , getTokenInfo
@@ -38,7 +42,7 @@ import Config.Env.Util exposing (RpcProvider)
 import Contract.ERC20 as ERC20
 import Contract.Registry as Registry
 import Contract.Snapper as Snapper
-import Contract.TheSpace as Space
+import Contract.Space as Space
     exposing
         ( colorDecoder
         , colorLogsDecoder
@@ -51,26 +55,23 @@ import Contract.TheSpace as Space
         , ubiDecoder
         , ubiLogsDecoder
         )
+import Contract.Util exposing (unsafeBigIntToInt)
 import Data
     exposing
         ( BlockNumber
         , Index
-        , OwnPixelsResultPage
-        , Pixel
         , Price
         , RpcErrorData
         , RpcErrorKind(..)
-        , RpcResult(..)
-        , Snapshot
         , TaxRate
         , TokenInfo
         , TokenInfoKind(..)
         , WalletDetail
         , WalletInfo(..)
         , accTax
-        , defaultRpcError
+        , cidToSnapshotUri
+        , intToHex
         , safeColorId
-        , unsafeBigIntToInt
         )
 import Env exposing (env)
 import Eth.Decode as ED
@@ -79,8 +80,10 @@ import Eth.Types exposing (Address, BlockId(..), Call, Hex)
 import Eth.Units exposing (EthUnit(..))
 import Eth.Utils exposing (add0x, addressToString, toAddress, unsafeToHex)
 import Hex
+import Http
 import Json.Decode as D
 import Json.Encode as E exposing (Value)
+import Model.Playback exposing (deltaDataDecoder)
 import Msg exposing (Msg(..))
 
 
@@ -110,6 +113,41 @@ port rpcSocketControl : (String -> msg) -> Sub msg
 -- Data Types
 
 
+type RpcResult
+    = RpcInitMap Snapper.Snapshot
+    | RpcNewHeadsSubId SubId
+    | RpcColorSubId SubId
+    | RpcPriceSubId SubId
+    | RpcTransferSubId SubId
+    | RpcTaxSubId SubId
+    | RpcUbiSubId SubId
+    | RpcDefaultSubId SubId
+    | RpcNewHead BlockNumber
+    | RpcTaxRate TaxRate
+    | RpcTreasuryShare Space.TreasuryShare
+    | RpcMintTax Price
+    | RpcLatestColorLog (List Space.ColorEvent)
+    | RpcLatestPriceLog (List Space.PriceEvent)
+    | RpcLatestTransferLog (List Space.TransferEvent)
+    | RpcLatestTaxLog (List Space.TaxEvent)
+    | RpcLatestUbiLog (List Space.UbiEvent)
+    | RpcColorEvent Space.ColorEvent
+    | RpcPriceEvent Space.PriceEvent
+    | RpcTransferEvent Space.TransferEvent
+    | RpcTaxEvent Space.TaxEvent
+    | RpcUbiEvent Space.UbiEvent
+    | RpcRegistryTransferEvent Registry.RegistryTransferEvent
+    | RpcPixel Space.Pixel
+    | RpcAssets Space.AssetsResultPage
+    | RpcTokenInfo TokenInfo
+    | RpcDeltaCids (List Snapper.Cid)
+    | RpcError RpcErrorData
+
+
+type alias SubId =
+    Int
+
+
 type alias RpcCallData =
     { method : String
     , params : List Value
@@ -119,6 +157,7 @@ type alias RpcCallData =
 
 type MessageId
     = GetInitMap
+    | LatestPlaybackDeltaCids
     | WatchNewHeads
     | WatchColor
     | WatchPrice
@@ -136,7 +175,7 @@ type MessageId
     | LatestTaxEvents
     | LatestUbiEvents
     | GetPixel
-    | GetOwnPixels Int
+    | GetAssets Int
     | GetBalance Address
     | GetAllowance Address
 
@@ -145,14 +184,7 @@ type MessageId
 -- Helpers
 
 
-toSnapshot : Snapper.LatestSnapshotInfo -> Snapshot
-toSnapshot snp =
-    { blockNumber = snp.latestSnapshotBlock |> unsafeBigIntToInt
-    , cid = snp.latestSnapshotCid |> Snapper.trimCid
-    }
-
-
-toPixel : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixel -> Pixel
+toPixel : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixel -> Space.Pixel
 toPixel taxRate bkNum pixelBigInt =
     let
         lastTaxBK =
@@ -178,7 +210,7 @@ toPixel taxRate bkNum pixelBigInt =
     }
 
 
-toPixelsByOwner : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixelsByOwner -> OwnPixelsResultPage
+toPixelsByOwner : Maybe TaxRate -> Maybe BlockNumber -> Space.GetPixelsByOwner -> Space.AssetsResultPage
 toPixelsByOwner taxRate bkNum pixelsByOwner =
     { total = pixelsByOwner.total |> unsafeBigIntToInt
     , limit = pixelsByOwner.limit |> unsafeBigIntToInt
@@ -203,6 +235,24 @@ toAllowanceTokenInfo addr amt =
     }
 
 
+defaultRpcErrorCode : Int
+defaultRpcErrorCode =
+    -33000
+
+
+defaultRpcErrorData : String -> RpcErrorData
+defaultRpcErrorData msg =
+    { kind = RpcUnknownError -- we may special treat some errors
+    , code = defaultRpcErrorCode
+    , message = msg
+    }
+
+
+defaultRpcError : String -> RpcResult
+defaultRpcError msg =
+    RpcError <| defaultRpcErrorData msg
+
+
 
 -- Encoders / Decoders
 
@@ -221,11 +271,14 @@ messageIdEncoder msgId =
         GetAllowance addr ->
             E.string <| "alw-" ++ addressToString addr
 
-        GetOwnPixels offset ->
+        GetAssets offset ->
             E.string <| "ops-" ++ String.fromInt offset
 
         GetInitMap ->
             E.string "imap"
+
+        LatestPlaybackDeltaCids ->
+            E.string "pb"
 
         GetBlockNumber ->
             E.string "bk"
@@ -286,6 +339,9 @@ messageIdDecoder =
 
                 "imap" ->
                     GetInitMap
+
+                "pb" ->
+                    LatestPlaybackDeltaCids
 
                 "bk" ->
                     GetBlockNumber
@@ -355,7 +411,7 @@ messageIdDecoder =
                     else if String.startsWith "ops-" s then
                         case String.toInt <| String.dropLeft 4 s of
                             Just offset ->
-                                GetOwnPixels offset
+                                GetAssets offset
 
                             Nothing ->
                                 GetBlockNumber
@@ -380,8 +436,12 @@ resultDecoder id taxRate blockNum =
     in
     case id of
         GetInitMap ->
-            res Snapper.latestSnapshotInfoDecoder
-                |> D.map (toSnapshot >> RpcInitMap)
+            res Snapper.snapshotDecoder
+                |> D.map RpcInitMap
+
+        LatestPlaybackDeltaCids ->
+            res Snapper.deltaLogsDecoder
+                |> D.map RpcDeltaCids
 
         WatchNewHeads ->
             resHex
@@ -459,9 +519,9 @@ resultDecoder id taxRate blockNum =
             res Space.getPixelDecoder
                 |> D.map (toPixel taxRate blockNum >> RpcPixel)
 
-        GetOwnPixels _ ->
+        GetAssets _ ->
             res Space.getPixelsByOwnerDecoder
-                |> D.map (toPixelsByOwner taxRate blockNum >> RpcOwnPixels)
+                |> D.map (toPixelsByOwner taxRate blockNum >> RpcAssets)
 
 
 newHeadDecoder : D.Decoder BlockNumber
@@ -668,7 +728,28 @@ openSocket =
 
 getInitMap : Cmd msg
 getInitMap =
-    call GetInitMap <| Snapper.latestSnapshotInfo contracts.snapper
+    call GetInitMap <| Snapper.latestSnapshot contracts.snapper
+
+
+getLatestDeltaCids : BlockNumber -> Cmd msg
+getLatestDeltaCids deltaBkNum =
+    send
+        { method = "eth_getLogs"
+        , id = LatestPlaybackDeltaCids
+        , params =
+            [ E.object
+                [ ( "address", EE.address contracts.snapper )
+                , ( "topics"
+                  , EE.topicsList
+                        [ Just topics.delta
+                        , Just <| unsafeToHex <| intToHex 0 -- regionId 0
+                        ]
+                  )
+                , ( "fromBlock", EE.hexInt deltaBkNum )
+                , ( "toBlock", E.string "latest" )
+                ]
+            ]
+        }
 
 
 getLatestColorEvents : Int -> Cmd msg
@@ -752,8 +833,8 @@ getPixel index =
     call GetPixel <| Space.getPixel contracts.space <| BigInt.fromInt index
 
 
-getOwnPixels : Maybe BlockNumber -> Address -> Int -> Int -> Cmd msg
-getOwnPixels bk_ owner limit_ offset_ =
+getAssets : Address -> Maybe BlockNumber -> Int -> Int -> Cmd msg
+getAssets owner bk_ limit_ offset_ =
     let
         limit =
             BigInt.fromInt limit_
@@ -765,7 +846,7 @@ getOwnPixels bk_ owner limit_ offset_ =
             Space.getPixelsByOwner contracts.space owner limit offset
 
         msgId =
-            GetOwnPixels offset_
+            GetAssets offset_
     in
     case bk_ of
         Just bk ->
@@ -877,6 +958,25 @@ switchNetwork rpc =
         , ( "params", E.list E.object [ params ] )
         ]
         |> walletOut
+
+
+
+-- Http API
+
+
+getDeltas : List Snapper.Cid -> Cmd Msg
+getDeltas cids =
+    Cmd.batch <|
+        List.map
+            (\cid ->
+                Http.get
+                    { url = cidToSnapshotUri cid
+                    , expect =
+                        Http.expectJson DeltaRecieved <|
+                            deltaDataDecoder cid
+                    }
+            )
+            cids
 
 
 

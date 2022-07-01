@@ -14,7 +14,9 @@ type alias Env =
     , rpcSocketAddress : String
     , rpcProvider : RpcProvider
     , polyscanEndpoint : String
+    , playbackWindow : Int
     , snapshotUriPrefix : String
+    , genesisSnapshotCid : String
     }
 
 

@@ -3,7 +3,8 @@ module View.Sidebar exposing (viewSidebar)
 import Array
 import Config
     exposing
-        ( getOwnPixelLimit
+        ( cellModalWidth
+        , getAssetsLimit
         , lightColor
         , price
         , sidebarWidth
@@ -12,13 +13,13 @@ import Config
         , zeroPrice
         )
 import Contract.ERC20 exposing (allowance)
+import Contract.Space exposing (Pixel)
 import Css exposing (..)
 import Data
     exposing
         ( Activity(..)
         , ColorId
         , Index
-        , Pixel
         , Price
         , RpcErrorKind(..)
         , Size
@@ -38,9 +39,19 @@ import Env exposing (env)
 import Eth.Defaults exposing (zeroAddress)
 import Eth.Units exposing (EthUnit(..))
 import Html
-import Html.Styled exposing (Html, button, div, img, text, toUnstyled)
-import Html.Styled.Attributes exposing (css, href, src, title)
-import Html.Styled.Events exposing (onClick)
+import Html.Styled exposing (Html, button, div, img, input, text, toUnstyled)
+import Html.Styled.Attributes as Attributes
+    exposing
+        ( css
+        , fromUnstyled
+        , href
+        , src
+        , title
+        , type_
+        , value
+        )
+import Html.Styled.Events exposing (onClick, onInput)
+import Html.Styled.Lazy as Lazy
 import InfiniteList as Inf
 import Model
     exposing
@@ -51,24 +62,8 @@ import Model
         , SidebarUIMode(..)
         , TaxInfo
         )
-import Model.Assets
-    exposing
-        ( AssetChangeKind(..)
-        , Assets(..)
-        , AssetsChanges
-        , AssetsCollectedIds
-        , AssetsFetched
-        , AssetsSort
-        , AssetsSortType(..)
-        , LoadedAssetsData
-        , LoadedAssetsPage(..)
-        , getFetchedPixel
-        , loadedAssetsChanged
-        , loadedAssetsTotalPrice
-        , loadedAssetsTotalTax
-        , loadedAssetsTotalUbi
-        , pixelCollected
-        )
+import Model.Assets as A
+import Model.Playback as PB
 import Msg exposing (Msg(..))
 import View.Common exposing (..)
 
@@ -84,7 +79,7 @@ edge =
 
 navHeight : Float
 navHeight =
-    40
+    36
 
 
 acctInfoHeight : Float
@@ -110,6 +105,11 @@ entryHeight =
 assetOpHeight : Float
 assetOpHeight =
     60
+
+
+progressBarWidth : Float
+progressBarWidth =
+    140
 
 
 
@@ -206,19 +206,15 @@ scrollArea : Float -> List item -> Inf.Model -> (Int -> Int -> item -> Html.Html
 scrollArea scrollH items infList itemView msg =
     div
         [ css <| scrollAreaStyle scrollH <| List.length items
-        , Inf.onScroll msg |> Html.Styled.Attributes.fromUnstyled
+        , Inf.onScroll msg |> fromUnstyled
         ]
         [ Inf.view (scrollConfig scrollH itemView) infList items
             |> Html.Styled.fromUnstyled
         ]
 
 
-
--- Views
-
-
-viewSidebar : SidebarMode -> Size -> WalletInfo -> List Activity -> Assets -> SidebarInfLists -> TaxInfo -> Html Msg
-viewSidebar ( uiMode, infoType ) winSize wallet acts assets { actsInfList, assetsInfList } { mintTax } =
+viewSidebar : ( AppMode, SidebarMode, Size ) -> PB.Playback -> WalletInfo -> List Activity -> A.Assets -> SidebarInfLists -> TaxInfo -> Html Msg
+viewSidebar ( appMode, ( uiMode, infoType ), winSize ) playback wallet acts assets { actsInfList, assetsInfList } { mintTax } =
     let
         modalW =
             sidebarWidth
@@ -242,22 +238,26 @@ viewSidebar ( uiMode, infoType ) winSize wallet acts assets { actsInfList, asset
             ]
 
         collapsedStyle =
-            height (px <| edge * 2 + navHeight)
-                :: baseStyle
+            height (px <| edge * 2 + navHeight) :: baseStyle
 
         expandedStyle =
             height (px modalH) :: baseStyle
-    in
-    case uiMode of
-        CollapsedSidebar ->
+
+        collapsedSidebar pb =
             div
                 [ css collapsedStyle ]
-                [ div
-                    [ css [ margin (px edge), marginBottom (px 0) ] ]
-                    [ nav uiMode ]
+                [ div [ css [ margin (px edge), marginBottom (px 0) ] ]
+                    [ nav uiMode pb ]
                 ]
+    in
+    case ( appMode, uiMode ) of
+        ( Loading, _ ) ->
+            collapsedSidebar playback
 
-        ExpandedSidebar ->
+        ( Realtime, CollapsedSidebar ) ->
+            collapsedSidebar playback
+
+        ( Realtime, ExpandedSidebar ) ->
             div
                 [ css expandedStyle ]
                 [ div
@@ -267,36 +267,61 @@ viewSidebar ( uiMode, infoType ) winSize wallet acts assets { actsInfList, asset
                         , height (px heightWithoutLogs)
                         ]
                     ]
-                    [ nav uiMode
+                    [ nav uiMode playback
                     , acctInfo wallet
                     , switch wallet infoType assets
                     ]
                 , let
                     acts_ =
-                        viewActs modalH wallet mintTax actsInfList acts
+                        -- In theory we don't need lazy here,
+                        -- but Elm seems couldn't figure it out sometimes.
+                        Lazy.lazy5 viewActs
+                            modalH
+                            wallet
+                            mintTax
+                            actsInfList
+                            acts
 
                     assets_ =
-                        viewAssets modalH wallet assetsInfList assets
-                  in
-                  case infoType of
-                    -- Some trick as canvas, using fixed layout
-                    -- to avoid scroll reset problem
-                    ActLogs ->
-                        div []
-                            [ div [] [ acts_ ]
-                            , div [ css [ display none ] ] [ assets_ ]
-                            ]
+                        Lazy.lazy4 viewAssets
+                            modalH
+                            wallet
+                            assetsInfList
+                            assets
 
-                    AssetsManager ->
-                        div []
-                            [ div [ css [ display none ] ] [ acts_ ]
-                            , div [] [ assets_ ]
-                            ]
+                    hide =
+                        [ css [ display none ] ]
+                  in
+                  div [] <|
+                    case infoType of
+                        -- Same trick as canvas, using fixed layout
+                        -- to avoid scroll reset problem
+                        ActLogs ->
+                            [ div [] [ acts_ ], div hide [ assets_ ] ]
+
+                        AssetsManager ->
+                            [ div hide [ acts_ ], div [] [ assets_ ] ]
                 ]
 
+        ( Playback, _ ) ->
+            viewPlayback playback
 
-nav : SidebarUIMode -> Html Msg
-nav uiMode =
+
+spinnerPlaceholder : Html msg
+spinnerPlaceholder =
+    div
+        [ css
+            [ width (px 28)
+            , height (px 28)
+            , displayFlex
+            , alignItems center
+            ]
+        ]
+        [ spinner bigTextSize grayStr ]
+
+
+nav : SidebarUIMode -> PB.Playback -> Html Msg
+nav uiMode playback =
     let
         style_ =
             [ displayFlex
@@ -312,14 +337,11 @@ nav uiMode =
             , marginTop (px -4)
             ]
 
-        logo =
-            img [ src logoDataUri, css [ height (px navHeight) ] ] []
-
         linkIcon url title_ icon =
             div [ css [ cursor pointer ], title title_ ]
                 [ Html.Styled.a
                     [ css [ outline none ]
-                    , Html.Styled.Attributes.target "_blank"
+                    , Attributes.target "_blank"
                     , href url
                     ]
                     [ iconNormal icon ]
@@ -331,13 +353,22 @@ nav uiMode =
         discord =
             linkIcon Config.discordLink "Discord" Icon.discord
 
-        --playback =
-        --    div
-        --        [ css [ cursor pointer ]
-        --        , title "Playback Recent History"
-        --        , onClick <| AppModeChange PlaybackLoading
-        --        ]
-        --        [ iconNormal Icon.clock ]
+        playback_ =
+            let
+                title_ =
+                    "Playback Recent History"
+            in
+            if PB.readyToEnter playback then
+                div
+                    [ css [ cursor pointer ]
+                    , title title_
+                    , onClick <| AppModeChange Playback
+                    ]
+                    [ iconNormal Icon.history ]
+
+            else
+                spinnerPlaceholder
+
         modeSwitch =
             div
                 [ css [ cursor pointer ]
@@ -369,9 +400,8 @@ nav uiMode =
         icons =
             div [ css iconsStyle ]
                 [ info_
-
-                --, playback
                 , discord
+                , playback_
                 , modeSwitch
                 ]
     in
@@ -380,6 +410,11 @@ nav uiMode =
         [ logo
         , div [ css [ color secondary ] ] [ icons ]
         ]
+
+
+logo : Html msg
+logo =
+    img [ src logoDataUri, css [ height (px navHeight) ] ] []
 
 
 acctInfo : WalletInfo -> Html Msg
@@ -452,7 +487,7 @@ acctInfo wallet =
         ]
 
 
-switch : WalletInfo -> SidebarInfoType -> Assets -> Html Msg
+switch : WalletInfo -> SidebarInfoType -> A.Assets -> Html Msg
 switch wallet activeInfoType assets =
     let
         style_ =
@@ -504,8 +539,8 @@ switch wallet activeInfoType assets =
 
         yourPixelsChanged =
             case assets of
-                AssetsLoaded ast ->
-                    loadedAssetsChanged ast
+                A.AssetsLoaded ast ->
+                    A.changed ast
 
                 _ ->
                     False
@@ -643,27 +678,6 @@ viewActEntry wallet mintTax log =
                 ]
 
             else
-                --case kind of
-                --    RpcUnderPricedError idx ->
-                --        [ ln
-                --            [ redDiv "Under priced"
-                --            , secDiv "when buying"
-                --            , coords idx
-                --            ]
-                --        , ln
-                --            [ Html.Styled.a
-                --                [ css
-                --                    [ color gray
-                --                    , fontSize smallText
-                --                    , textDecoration none
-                --                    ]
-                --                , Html.Styled.Attributes.target "_blank"
-                --                , href underPricedHelpLink
-                --                ]
-                --                [ text "What's this and what can I do?" ]
-                --            ]
-                --        ]
-                --    RpcUnknownError ->
                 [ ln [ redDiv "Huh...something seems wrong here." ] ]
     in
     case log of
@@ -705,11 +719,11 @@ viewActEntry wallet mintTax log =
             div [ cssLog False ] <| errorLog err
 
 
-viewAssets : Float -> WalletInfo -> Inf.Model -> Assets -> Html Msg
+viewAssets : Float -> WalletInfo -> Inf.Model -> A.Assets -> Html Msg
 viewAssets modalH wallet actInfList assets =
     if walletConnected wallet then
         case assets of
-            AssetsNotLoaded ->
+            A.AssetsNotLoaded ->
                 placeholder <|
                     [ div [ css [ displayFlex, flexDirection column ] ]
                         [ div
@@ -721,7 +735,7 @@ viewAssets modalH wallet actInfList assets =
                         ]
                     ]
 
-            AssetsLoading { loaded } ->
+            A.AssetsLoading { loaded } ->
                 let
                     per =
                         case loaded of
@@ -732,7 +746,7 @@ viewAssets modalH wallet actInfList assets =
                                 let
                                     hasLoaded x =
                                         case x of
-                                            Page _ ->
+                                            A.Page _ ->
                                                 True
 
                                             _ ->
@@ -759,7 +773,7 @@ viewAssets modalH wallet actInfList assets =
                             , textAlign center
                             ]
                         ]
-                        [ spinner bigTextSize grayStr
+                        [ bouncingBalls bigTextSize grayStr
                         , div
                             [ css [ marginTop (px 10) ] ]
                             [ textDiv "Loading your pixels, hang on..."
@@ -768,7 +782,7 @@ viewAssets modalH wallet actInfList assets =
                         ]
                     ]
 
-            AssetsLoaded ast ->
+            A.AssetsLoaded ast ->
                 if List.length ast.list == 0 then
                     placeholder <| [ textDiv "You don't have any pixels yet." ]
 
@@ -782,8 +796,8 @@ viewAssets modalH wallet actInfList assets =
         placeholder [ textDiv "Please connect wallet first." ]
 
 
-viewAssetOps : LoadedAssetsData -> Html Msg
-viewAssetOps ({ total, exceededLimit, sort } as assets) =
+viewAssetOps : A.LoadedData -> Html Msg
+viewAssetOps ({ total, exceededLimit, rank } as assets) =
     let
         bottomMargin =
             10
@@ -802,7 +816,7 @@ viewAssetOps ({ total, exceededLimit, sort } as assets) =
             refresh_ iconGreen
 
         refresh asts =
-            if loadedAssetsChanged asts then
+            if A.changed asts then
                 changedRefresh
 
             else
@@ -820,7 +834,7 @@ viewAssetOps ({ total, exceededLimit, sort } as assets) =
             if exceededLimit then
                 let
                     showingStr =
-                        "(showing " ++ String.fromInt getOwnPixelLimit ++ ")"
+                        "(showing " ++ String.fromInt getAssetsLimit ++ ")"
 
                     showing =
                         smallTextDiv <| grayDiv <| showingStr
@@ -838,18 +852,18 @@ viewAssetOps ({ total, exceededLimit, sort } as assets) =
                 [ secDiv lbl, priceTagNormal ttl ]
 
         totalInfo =
-            case sort of
-                ( AssetsSortTime, _ ) ->
+            case rank of
+                ( A.RankTime, _ ) ->
                     totalCount total
 
-                ( AssetsSortPrice, _ ) ->
-                    totalMonetaryInfo "Total" <| loadedAssetsTotalPrice assets
+                ( A.RankPrice, _ ) ->
+                    totalMonetaryInfo "Total" <| A.totalPrice assets
 
-                ( AssetsSortTax, _ ) ->
-                    totalMonetaryInfo "Tax ≈" <| loadedAssetsTotalTax assets
+                ( A.RankTax, _ ) ->
+                    totalMonetaryInfo "Tax ≈" <| A.totalTax assets
 
-                ( AssetsSortUbi, _ ) ->
-                    totalMonetaryInfo "Inc. ≈" <| loadedAssetsTotalUbi assets
+                ( A.RankUbi, _ ) ->
+                    totalMonetaryInfo "Inc. ≈" <| A.totalUbi assets
 
         info =
             div
@@ -870,11 +884,11 @@ viewAssetOps ({ total, exceededLimit, sort } as assets) =
             , margin4 (px 0) (px edge) (px bottomMargin) (px edge)
             ]
         ]
-        [ viewAssetsSorts sort, info ]
+        [ viewRanks rank, info ]
 
 
-viewAssetsSorts : AssetsSort -> Html Msg
-viewAssetsSorts ( sType, sOrder ) =
+viewRanks : A.Rank -> Html Msg
+viewRanks ( sType, sOrder ) =
     let
         item sortType label =
             div
@@ -923,36 +937,36 @@ viewAssetsSorts ( sType, sOrder ) =
             , marginBottom (px 10)
             ]
         ]
-        [ item AssetsSortTime "Recent"
-        , item AssetsSortPrice "Price"
-        , item AssetsSortTax "Tax"
-        , item AssetsSortUbi "Inc."
+        [ item A.RankTime "Recent"
+        , item A.RankPrice "Price"
+        , item A.RankTax "Tax"
+        , item A.RankUbi "Inc."
         ]
 
 
-viewAssetsResult : Float -> LoadedAssetsData -> Inf.Model -> Html Msg
-viewAssetsResult modalH { sort, changes, fetchedPixels, collectedIds, list } assetsInfList =
+viewAssetsResult : Float -> A.LoadedData -> Inf.Model -> Html Msg
+viewAssetsResult modalH { rank, changes, fetchedPixels, collectedIds, list } assetsInfList =
     let
         scrollH =
             modalH - (heightWithoutLogs + edge + assetOpHeight)
 
         itemView =
             \_ _ p ->
-                viewAssetResultEntry sort changes fetchedPixels collectedIds p
+                viewAssetResultEntry rank changes fetchedPixels collectedIds p
                     |> toUnstyled
     in
     scrollArea scrollH list assetsInfList itemView ScrollAssets
 
 
-viewAssetResultEntry : AssetsSort -> AssetsChanges -> AssetsFetched -> AssetsCollectedIds -> Pixel -> Html Msg
+viewAssetResultEntry : A.Rank -> A.Changes -> A.AssetsFetched -> A.CollectedIds -> Pixel -> Html Msg
 viewAssetResultEntry ( sortType, _ ) changes fetchedPixels collectedIds pixel =
     let
         ( pxl, tradeFlag ) =
             case Dict.get pixel.index changes of
-                Just Bought ->
+                Just A.Bought ->
                     let
                         fetchPxl =
-                            case getFetchedPixel pixel.index fetchedPixels of
+                            case A.getFetchedPixel pixel.index fetchedPixels of
                                 Just p ->
                                     p
 
@@ -961,10 +975,10 @@ viewAssetResultEntry ( sortType, _ ) changes fetchedPixels collectedIds pixel =
                     in
                     ( fetchPxl, boldTextDiv <| smallTextDiv <| greenDiv "New" )
 
-                Just Sold ->
+                Just A.Sold ->
                     ( pixel, boldTextDiv <| smallTextDiv <| orangeDiv "Sold" )
 
-                Just Updated ->
+                Just A.Updated ->
                     ( pixel, smallTextDiv <| greenDiv "Updated" )
 
                 Nothing ->
@@ -972,16 +986,16 @@ viewAssetResultEntry ( sortType, _ ) changes fetchedPixels collectedIds pixel =
 
         ( extraTag, value ) =
             case sortType of
-                AssetsSortTax ->
+                A.RankTax ->
                     ( secDiv "Tax ≈", priceTag pxl.tax )
 
-                AssetsSortUbi ->
-                    ( if pixelCollected pxl.index collectedIds then
+                A.RankUbi ->
+                    ( if A.pixelCollected pxl.index collectedIds then
                         phantomDiv
 
                       else
                         secDiv "Income ≈"
-                    , if pixelCollected pxl.index collectedIds then
+                    , if A.pixelCollected pxl.index collectedIds then
                         div
                             [ css [ color green ]
                             , title <|
@@ -1018,3 +1032,156 @@ viewAssetResultEntry ( sortType, _ ) changes fetchedPixels collectedIds pixel =
             , value
             ]
         ]
+
+
+viewPlayback : PB.Playback -> Html Msg
+viewPlayback pb =
+    let
+        modelStyle =
+            [ position absolute
+            , zIndex (int sidebarzIndex)
+            , top (px modalEdge)
+            , left (px modalEdge)
+            , minWidth (px cellModalWidth)
+            , modalBoxShadow
+            , modalRadius
+            , backgroundColor modalBackgroundColor
+            , height (px <| navHeight + edge * 2)
+            ]
+
+        playbackStyle =
+            [ displayFlex
+            , justifyContent spaceBetween
+            , alignItems center
+            , height (pct 100)
+            , marginLeft (px edge)
+            , marginRight (px edge)
+            ]
+    in
+    if PB.readyToEnter pb then
+        div [ css modelStyle ]
+            [ div
+                [ css playbackStyle ]
+                [ div [ css [ marginRight (px 10) ] ] [ logo ]
+                , togglePlay pb
+                , progress pb
+                , circleSpeed pb
+                , exitPlayback
+                ]
+            ]
+
+    else
+        phantomDiv
+
+
+togglePlay : PB.Playback -> Html Msg
+togglePlay pb =
+    if not <| PB.readyToPlay pb then
+        spinnerPlaceholder
+
+    else if PB.playing pb then
+        div
+            [ css [ cursor pointer ]
+            , title "Pause"
+            , onClick PlaybackPause
+            ]
+            [ iconNormal Icon.pause ]
+
+    else
+        div
+            [ css [ cursor pointer ]
+            , title "Play"
+            , onClick PlaybackPlay
+            ]
+            [ iconNormal Icon.play ]
+
+
+progress : PB.Playback -> Html Msg
+progress pb =
+    if not <| PB.readyToPlay pb then
+        div
+            [ css
+                [ width (px progressBarWidth)
+                , borderBottom3 (px 2) solid lightgray
+                ]
+            ]
+            []
+
+    else
+        let
+            progressPseudoStyle =
+                [ width (px 25)
+                , height (px 25)
+                , border (px 0)
+                , backgroundColor highlightColor2
+                , cursor pointer
+                ]
+
+            progressStyle =
+                [ width (px progressBarWidth)
+                , height (px 2)
+                , opacity (num 0.7)
+                , outline none
+                , backgroundColor secondary
+                , property "-webkit-appearance" "none"
+                , property "appearance" "none"
+                , property "opacity" "0.7"
+                , property "-webkit-transition" ".2s"
+                , property "transition" "opacity .2s"
+                , pseudoClass "-webkit-slider-thumb" <|
+                    progressPseudoStyle
+                        ++ [ property "appearance" "none"
+                           , property "-webkit-appearance" "none"
+                           ]
+                , pseudoClass "-moz-range-thumb" progressPseudoStyle
+                ]
+        in
+        input
+            [ type_ "range"
+            , Attributes.min <| String.fromInt 0
+            , Attributes.max <| String.fromInt <| PB.maxProgress pb
+            , value <| String.fromInt <| PB.currentProgress pb
+            , onInput
+                (\v ->
+                    case String.toInt v of
+                        Just i ->
+                            PlaybackSlide i
+
+                        Nothing ->
+                            NoOp
+                )
+            , css progressStyle
+            ]
+            []
+
+
+circleSpeed : PB.Playback -> Html Msg
+circleSpeed pb =
+    let
+        baseStyle =
+            [ fontSize extraBigText ]
+
+        title_ =
+            "Change Speed"
+    in
+    if not <| PB.readyToPlay pb then
+        div [ css <| baseStyle ++ [ color lightgray ], title title_ ]
+            [ text "1X" ]
+
+    else
+        div
+            [ css <| baseStyle ++ [ color secondary, cursor pointer ]
+            , title title_
+            , onClick PlaybackCircleSpeed
+            ]
+            [ text <| PB.speedToString <| PB.currentSpeed pb ]
+
+
+exitPlayback : Html Msg
+exitPlayback =
+    div
+        [ css [ marginLeft (px 10), cursor pointer ]
+        , title "Exit Playback"
+        , onClick <| AppModeChange Realtime
+        ]
+        [ iconNormal Icon.close ]

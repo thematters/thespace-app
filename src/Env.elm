@@ -13,5 +13,6 @@ env =
         env_ =
             Env.env
     in
-    --{ env_ | debug = True }
-    env_
+    --env_
+    --{ env_ | debug = False }
+    { env_ | debug = True }

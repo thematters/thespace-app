@@ -2,6 +2,7 @@ port module Canvas exposing
     ( canvasSubs
     , centerToCellTransform
     , endPlayback
+    , enterPlayback
     , forward
     , freeMoveTransform
     , initLatestColors
@@ -9,15 +10,13 @@ port module Canvas exposing
     , initPlayback
     , moveClampToEdgeTransform
     , moveTransform
+    , playAgain
     , playbackChangeSpeed
-    , playbackSkipToEnd
-    , playbackSkipToStart
+    , playbackRewindTimeline
     , redrawMiniMap
     , reset
     , resetTransform
     , rewind
-    , startPlayback
-    , startPlaybackAgain
     , transform
     , update
     , zoomTransform
@@ -33,11 +32,10 @@ import Config
         , minZoom
         , moveClampRatio
         )
+import Contract.Space exposing (ColorEvent)
 import Data
     exposing
         ( Cell
-        , ColorChange
-        , ColorEvent
         , Delta
         , Index
         , Size
@@ -52,7 +50,7 @@ import Data
         , validIndex
         )
 import Model exposing (AppMode(..), Model)
-import Model.Playback exposing (PlaybackSpeed(..), initPlaybackConfig)
+import Model.Playback as PB
 import Msg exposing (Msg(..))
 
 
@@ -228,23 +226,18 @@ initMapSnapshot trans winSize initImageUri =
     initMapSnapshotCommand trans winSize initImageUri |> send
 
 
-toIdxCC : Maybe ColorEvent -> String
-toIdxCC cevt =
-    case cevt of
-        Nothing ->
-            ""
+toIdxCC : ColorEvent -> String
+toIdxCC { removed, index, color } =
+    if not <| validIndex index || removed then
+        ""
 
-        Just { removed, index, color } ->
-            if not <| validIndex index || removed then
-                ""
-
-            else
-                String.fromInt (dec index)
-                    ++ ","
-                    ++ (String.fromInt <| dec <| safeColorId color)
+    else
+        String.fromInt (dec index)
+            ++ ","
+            ++ (String.fromInt <| dec <| safeColorId color)
 
 
-coloEventToCmdStr : List (Maybe ColorEvent) -> String
+coloEventToCmdStr : List ColorEvent -> String
 coloEventToCmdStr cevts =
     cevts
         |> List.map toIdxCC
@@ -252,7 +245,7 @@ coloEventToCmdStr cevts =
         |> String.join ","
 
 
-initLatestColors : List (Maybe ColorEvent) -> Cmd msg
+initLatestColors : List ColorEvent -> Cmd msg
 initLatestColors cevts =
     -- initLatestColors,<i1>,<cc1>,<i2>,<cc2>...
     let
@@ -260,14 +253,13 @@ initLatestColors cevts =
             coloEventToCmdStr cevts
     in
     if idxCCStr == "" then
-        -- we still need to send this to finish initialization when no colors
         "initLatestColors" |> send
 
     else
         "initLatestColors," ++ coloEventToCmdStr cevts |> send
 
 
-update : List (Maybe ColorEvent) -> Cmd msg
+update : List ColorEvent -> Cmd msg
 update cevts =
     -- update,<i1>,<cc1>,<i2>,<cc2>...
     let
@@ -304,8 +296,6 @@ resetCommand trans size =
             size
     in
     transCommand trans
-        --++ ","
-        --++ String.fromFloat trans.zoom
         ++ ","
         ++ String.fromInt w
         ++ ","
@@ -323,49 +313,54 @@ redrawMiniMap =
     "redrawmm" |> send
 
 
-initPlayback : Cmd msg
-initPlayback =
-    "pbInit" |> send
+initPlayback : String -> Cmd msg
+initPlayback playbackSnapshotUri =
+    "pbInit," ++ playbackSnapshotUri |> send
 
 
-startPlayback : Cmd msg
-startPlayback =
+enterPlayback : Cmd msg
+enterPlayback =
     "pbStart" |> send
 
 
-startPlaybackAgain : Cmd msg
-startPlaybackAgain =
-    "pbStartAgain" |> send
+playAgain : Cmd msg
+playAgain =
+    "pbPlayAgain" |> send
 
 
-forwardCommand : Array ColorChange -> String
-forwardCommand colorChanges =
+ccToIdxCid : PB.ColorChange compatible -> String
+ccToIdxCid change =
     let
-        one change =
-            String.fromInt change.idx ++ "," ++ change.new
+        idx =
+            String.fromInt <| dec change.index
+
+        cId =
+            String.fromInt <| dec <| safeColorId change.color
     in
-    "pbForward," ++ String.join "," (Array.toList <| Array.map one colorChanges)
+    idx ++ "," ++ cId
 
 
-forward : Array ColorChange -> Cmd msg
-forward colorChanges =
+timelineToIdxCidString : Array (PB.ColorChange compatible) -> String
+timelineToIdxCidString timeline =
+    timeline |> Array.map ccToIdxCid |> Array.toList |> String.join ","
+
+
+playbackRewindTimeline : PB.Timeline compatible -> Cmd msg
+playbackRewindTimeline timeline =
+    -- pbReverse,<i1>,<cc1>,<i2>,<cc2>...
+    "pbReverse," ++ timelineToIdxCidString timeline |> send
+
+
+forward : PB.Timeline compatible -> Cmd msg
+forward timeline =
     -- pbForward,<i1>,<cc1>,<i2>,<cc2>...
-    forwardCommand colorChanges |> send
+    "pbForward," ++ timelineToIdxCidString timeline |> send
 
 
-rewindCommand : Array ColorChange -> String
-rewindCommand colorChanges =
-    let
-        one change =
-            String.fromInt change.idx ++ "," ++ change.old
-    in
-    "pbRewind," ++ String.join "," (Array.toList <| Array.map one colorChanges)
-
-
-rewind : Array ColorChange -> Cmd msg
-rewind colorChanges =
+rewind : PB.Timeline compatible -> Cmd msg
+rewind timeline =
     -- pbRewind,<i1>,<cc1>,<i2>,<cc2>...
-    rewindCommand colorChanges |> send
+    "pbRewind," ++ timelineToIdxCidString timeline |> send
 
 
 endPlayback : Cmd msg
@@ -373,32 +368,22 @@ endPlayback =
     "pbEnd" |> send
 
 
-playbackSkipToStart : Cmd msg
-playbackSkipToStart =
-    "pbSkipToStart" |> send
-
-
-playbackSkipToEnd : Cmd msg
-playbackSkipToEnd =
-    "pbSkipToEnd" |> send
-
-
 changeSpeedCommand : Int -> String
 changeSpeedCommand speed =
     "pbSpeed," ++ String.fromInt speed
 
 
-playbackChangeSpeed : PlaybackSpeed -> Cmd msg
+playbackChangeSpeed : PB.Speed -> Cmd msg
 playbackChangeSpeed spd =
     -- pbSpeed,<spd>
     case spd of
-        OneX ->
+        PB.OneX ->
             changeSpeedCommand 1 |> send
 
-        TwoX ->
+        PB.TwoX ->
             changeSpeedCommand 2 |> send
 
-        FourX ->
+        PB.FourX ->
             changeSpeedCommand 4 |> send
 
 
@@ -423,33 +408,20 @@ handleAckMessages model =
                     AppModeChange Realtime
 
                 "pbInited" ->
+                    PlaybackSnapshotReady
+
+                "pbStarted" ->
                     case model.mode of
-                        PlaybackLoading ->
-                            let
-                                from =
-                                    1
-
-                                to =
-                                    Array.length model.colorHistory
-
-                                initConfig =
-                                    initPlaybackConfig from to
-                            in
-                            AppModeChange <| Playback initConfig
-
-                        RealtimeLoading ->
-                            NoOp
-
                         Realtime ->
-                            NoOp
+                            AppModeChange Playback
 
-                        Playback _ ->
+                        _ ->
                             NoOp
 
                 "tick" ->
-                    PlaybackTick
+                    PlaybackTicked
 
-                _ ->
-                    NoOp
+                s ->
+                    PlaybackRewindTimeline <| String.split "," s
     in
     handler

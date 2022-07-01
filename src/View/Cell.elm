@@ -17,12 +17,12 @@ import Config
         , tokenSign
         , zeroPrice
         )
+import Contract.Space exposing (Pixel)
 import Css exposing (..)
 import Data
     exposing
         ( Cell
         , ColorId
-        , Pixel
         , Position
         , Price
         , RpcErrorKind(..)
@@ -64,6 +64,7 @@ import View.Common
         , bigText
         , bigTextDiv
         , bigTextSize
+        , bouncingBalls
         , buttonDisabledStyle
         , buttonInvertStyle
         , buttonStyle
@@ -97,7 +98,6 @@ import View.Common
         , secDiv
         , secondary
         , smallText
-        , spinner
         , switchNetworkLink
         , syncPriceLink
         , textDiv
@@ -460,7 +460,7 @@ setPriceView { modalStyle, mask, mode, wallet, pixel, newColorId, newPrice, quot
 
 spin : Html msg
 spin =
-    spinner (normalTextSize * 2) lightgrayStr
+    bouncingBalls (normalTextSize * 2) lightgrayStr
 
 
 polyscanLink : String -> Html Msg -> Html Msg

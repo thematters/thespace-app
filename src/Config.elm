@@ -251,8 +251,8 @@ inputPriceDecimalDigits =
     2
 
 
-getOwnPixelPage : Int
-getOwnPixelPage =
+getAssetsPageLen : Int
+getAssetsPageLen =
     if debug then
         5
 
@@ -260,15 +260,24 @@ getOwnPixelPage =
         100
 
 
-getOwnPixelLimit : Int
-getOwnPixelLimit =
+getAssetsLimit : Int
+getAssetsLimit =
     (if debug then
         101
 
      else
         10000
     )
-        |> max getOwnPixelPage
+        |> max getAssetsPageLen
+
+
+
+-- Playback
+
+
+playbackWindow : Int
+playbackWindow =
+    env.playbackWindow
 
 
 
@@ -300,9 +309,9 @@ ubi =
     "a760fe80056c46d089c37a35d9dbe762141a463ae0eb8235522d27ab9595286d"
 
 
-snapshot : String
-snapshot =
-    "33038a04092464e1b8ce6006a75d1518a1226c32d269977e141f566ea7e284ab"
+delta : String
+delta =
+    "0x6e85193c2c4e64266f8891650392a957214f1ebc72a7ffe64cc1c2715d5ce23b"
 
 
 registryTransfer : String
@@ -316,7 +325,7 @@ type alias Topics =
     , transfer : Hex
     , tax : Hex
     , ubi : Hex
-    , snapshot : Hex
+    , delta : Hex
     , registryTransfer : Hex
     }
 
@@ -328,7 +337,7 @@ topics =
     , transfer = transfer |> unsafeToHex
     , tax = tax |> unsafeToHex
     , ubi = ubi |> unsafeToHex
-    , snapshot = snapshot |> unsafeToHex
+    , delta = delta |> unsafeToHex
     , registryTransfer = registryTransfer |> unsafeToHex
     }
 
@@ -351,6 +360,11 @@ contracts =
 debug : Bool
 debug =
     env.debug
+
+
+genesisSnapshotCid : String
+genesisSnapshotCid =
+    env.genesisSnapshotCid
 
 
 tokenSign : String

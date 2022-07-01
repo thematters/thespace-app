@@ -69,14 +69,6 @@ chevronUp =
         ]
 
 
-clock : Html msg
-clock =
-    svgFeatherIcon "clock"
-        [ Svg.circle [ cx "12", cy "12", r "10" ] []
-        , Svg.polyline [ points "12 6 12 12 16 14" ] []
-        ]
-
-
 close : Html msg
 close =
     svgFeatherIcon "x"
@@ -257,6 +249,23 @@ heartSmall =
         , width "16"
         ]
         [ Svg.path [ d "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ] []
+        ]
+
+
+history : Html msg
+history =
+    svg
+        [ class <| "history"
+        , fill "currentColor"
+        , height "28"
+        , stroke "currentColor"
+        , strokeLinecap "round"
+        , strokeLinejoin "round"
+        , strokeWidth "0"
+        , viewBox "0 0 48 48"
+        , width "28"
+        ]
+        [ Svg.path [ d "M30.25 32.15 22.55 24.55V13.85H25.55V23.3L32.4 30ZM23.85 42Q16.4 42 11.2 36.725Q6 31.45 6 23.95H9Q9 30.2 13.3 34.6Q17.6 39 23.85 39Q30.2 39 34.6 34.55Q39 30.1 39 23.75Q39 17.55 34.55 13.275Q30.1 9 23.85 9Q20.45 9 17.475 10.55Q14.5 12.1 12.3 14.65H17.55V17.65H7.1V7.25H10.1V12.55Q12.7 9.5 16.275 7.75Q19.85 6 23.85 6Q27.6 6 30.9 7.4Q34.2 8.8 36.675 11.225Q39.15 13.65 40.575 16.9Q42 20.15 42 23.9Q42 27.65 40.575 30.95Q39.15 34.25 36.675 36.7Q34.2 39.15 30.9 40.575Q27.6 42 23.85 42Z" ] []
         ]
 
 
