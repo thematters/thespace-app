@@ -6,7 +6,18 @@ import Config.Network.Mainnet as Net
 
 rpcSocketAddress : String
 rpcSocketAddress =
+    --rpcSocketAddressDataHub
+    rpcSocketAddressAlchemy
+
+
+rpcSocketAddressAlchemy : String
+rpcSocketAddressAlchemy =
     "wss://polygon-mainnet.g.alchemy.com/v2/NLv95hqjMltinp-8MKwMYyJphTqn2YAp"
+
+
+rpcSocketAddressDataHub : String
+rpcSocketAddressDataHub =
+    "wss://matic-mainnet--ws.datahub.figment.io/apikey/e62a4e148110be81b9e4ebe76e231558"
 
 
 erc20 : String
