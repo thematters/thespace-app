@@ -15,7 +15,64 @@ function onOpen(app) {
     }
 }
 
-function onSend(ws) {
+const fakeNewHeads = true
+// const blockInterval = 1000
+const blockInterval = 2000
+// const fakeNewHeadLimit = 5
+const fakeNewHeadLimit = 60
+let fakeNewHeadCount = 0
+let blockNumber = undefined
+
+function getRealNewHead(ws) {
+    const msg = {
+        jsonrpc: "2.0",
+        id: "bk",
+        method: "eth_blockNumber",
+        params: []
+    }
+    console.log(">>> Get NewHead")
+    if (debug) console.time("bk")
+    ws.send(JSON.stringify(msg))
+}
+
+function getFakeNewHead(app) {
+    fakeNewHeadCount += 1
+    blockNumber += 1
+    const msg = {
+        jsonrpc: "2.0",
+        id: "bk",
+        result: `0x${blockNumber.toString(16)}`
+    }
+    console.log(">>> Fake NewHead:", blockNumber)
+    app.ports.rpcSocketIn.send(msg)
+}
+
+function getNewHead(ws, app) {
+    if (typeof blockNumber === "undefined" ||
+        fakeNewHeadCount >= fakeNewHeadLimit) {
+        getRealNewHead(ws)
+        fakeNewHeadCount = 0
+    } else {
+        getFakeNewHead(app)
+    }
+    setTimeout(getNewHead, blockInterval, ws, app)
+}
+
+function subscribeNewHeads(msg, ws, app) {
+    if (fakeNewHeads) {
+        const subMsg = {
+            jsonrpc: "2.0",
+            id: "bsub",
+            result: "0x00000000000000000000000000000000"
+        }
+        app.ports.rpcSocketIn.send(subMsg)
+        setTimeout(getNewHead, blockInterval, ws, app)
+    } else {
+        ws.send(JSON.stringify(msg))
+    }
+}
+
+function onSend(ws, app) {
     return msg => {
         if (debug) {
             console.log("Out:", msg)
@@ -23,9 +80,14 @@ function onSend(ws) {
         }
         // Alchemy doesn't requrie `latest`, but seems majority of the 
         // providers do.
-        if (msg.method == "eth_call" && msg.params.length == 1)
+        if (msg.method === "eth_call" && msg.params.length === 1)
             msg.params.push("latest")
-        ws.send(JSON.stringify(msg))
+        // fake subscribe to NewHeads on prod
+        if (msg.method === "eth_subscribe" && msg.params[0] === "newHeads") {
+            subscribeNewHeads(msg, ws, app)
+        } else {
+            ws.send(JSON.stringify(msg))
+        }
     }
 }
 
@@ -35,6 +97,15 @@ function onMessage(app) {
         if (debug) {
             console.log("In:", msg)
             if (typeof msg.id !== "undefined") console.timeEnd(msg.id)
+        }
+        if (fakeNewHeads && msg.id === "bk") {
+            blockNumber = Number(msg.result)
+            if (debug)
+                console.log(
+                    ">>> blockNumber:",
+                    blockNumber,
+                    `(0x${blockNumber.toString(16)})`
+                )
         }
         app.ports.rpcSocketIn.send(msg)
     }
@@ -65,7 +136,7 @@ function onClose(app, rpc, oldSocket, oldSendHandler) {
 
 function initSocket(app, rpc) {
     let ws = new WebSocket(rpc)
-    let sendHandler = onSend(ws)
+    let sendHandler = onSend(ws, app)
     ws.onopen = onOpen(app)
     ws.onclose = onClose(app, rpc, ws, sendHandler)
     ws.onmessage = onMessage(app)

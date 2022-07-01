@@ -1083,12 +1083,7 @@ handleRpcMessageRecieved model msg =
         RpcNewHead bkNum ->
             let
                 newBK =
-                    case model.blockNumber of
-                        Nothing ->
-                            Just bkNum
-
-                        Just bk ->
-                            Just <| max bk bkNum
+                    Just bkNum
 
                 m =
                     { model | blockNumber = newBK }
