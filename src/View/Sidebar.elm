@@ -539,7 +539,7 @@ switch wallet activeInfoType assets =
 
         yourPixelsChanged =
             case assets of
-                A.AssetsLoaded ast ->
+                A.Loaded ast ->
                     A.changed ast
 
                 _ ->
@@ -723,7 +723,7 @@ viewAssets : Float -> WalletInfo -> Inf.Model -> A.Assets -> Html Msg
 viewAssets modalH wallet actInfList assets =
     if walletConnected wallet then
         case assets of
-            A.AssetsNotLoaded ->
+            A.NotLoaded ->
                 placeholder <|
                     [ div [ css [ displayFlex, flexDirection column ] ]
                         [ div
@@ -735,14 +735,14 @@ viewAssets modalH wallet actInfList assets =
                         ]
                     ]
 
-            A.AssetsLoading { loaded } ->
+            A.Loading { loadedPages } ->
                 let
                     per =
-                        case loaded of
+                        case loadedPages of
                             Nothing ->
                                 ""
 
-                            Just loaded_ ->
+                            Just loadedPages_ ->
                                 let
                                     hasLoaded x =
                                         case x of
@@ -753,15 +753,15 @@ viewAssets modalH wallet actInfList assets =
                                                 False
 
                                     needLoadPages =
-                                        loaded_ |> Array.length
+                                        loadedPages_ |> Array.length
 
-                                    loadedPages =
-                                        loaded_
+                                    loadPages =
+                                        loadedPages_
                                             |> Array.filter hasLoaded
                                             |> Array.length
 
                                     percent =
-                                        loadedPages * 100 // needLoadPages
+                                        loadPages * 100 // needLoadPages
                                 in
                                 String.fromInt percent ++ "%"
                 in
@@ -782,7 +782,7 @@ viewAssets modalH wallet actInfList assets =
                         ]
                     ]
 
-            A.AssetsLoaded ast ->
+            A.Loaded ast ->
                 if List.length ast.list == 0 then
                     placeholder <| [ textDiv "You don't have any pixels yet." ]
 
@@ -958,7 +958,7 @@ viewAssetsResult modalH { rank, changes, fetchedPixels, collectedIds, list } ass
     scrollArea scrollH list assetsInfList itemView ScrollAssets
 
 
-viewAssetResultEntry : A.Rank -> A.Changes -> A.AssetsFetched -> A.CollectedIds -> Pixel -> Html Msg
+viewAssetResultEntry : A.Rank -> A.Changes -> A.FetchedPixels -> A.CollectedIds -> Pixel -> Html Msg
 viewAssetResultEntry ( sortType, _ ) changes fetchedPixels collectedIds pixel =
     let
         ( pxl, tradeFlag ) =

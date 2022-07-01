@@ -1,10 +1,10 @@
 module Model.Assets exposing
     ( Action(..)
     , Assets(..)
-    , AssetsFetched
     , ChangeKind(..)
     , Changes
     , CollectedIds
+    , FetchedPixels
     , Handler
     , LoadedData
     , LoadedPage(..)
@@ -55,14 +55,14 @@ import Set exposing (Set)
 
 
 type Assets
-    = AssetsNotLoaded
-    | AssetsLoading LoadingAssets
-    | AssetsLoaded LoadedAssets
+    = NotLoaded
+    | Loading LoadingData
+    | Loaded LoadedData
 
 
-type alias LoadingAssets =
+type alias LoadingData =
     { block : Maybe BlockNumber
-    , loaded : LoadedPages
+    , loadedPages : LoadedPages
     , rank : Rank
     }
 
@@ -76,19 +76,15 @@ type LoadedPage
     | Page AssetsResultPage
 
 
-type alias LoadedAssets =
-    LoadedData
-
-
 type alias LoadedData =
     { list : AssetsResult
     , rank : Rank
-    , timeOrder : AssetsTiemOrder
+    , timeOrder : TimeOrder
     , total : Int
     , exceededLimit : Bool
     , changes : Changes
-    , loadedIds : AssetsLoadedIds
-    , fetchedPixels : AssetsFetched
+    , loadedIds : LoadedIds
+    , fetchedPixels : FetchedPixels
     , collectedIds : CollectedIds
     }
 
@@ -108,7 +104,7 @@ type alias Rank =
     ( RankType, SortOrder )
 
 
-type alias AssetsTiemOrder =
+type alias TimeOrder =
     Dict Index Int
 
 
@@ -122,11 +118,11 @@ type ChangeKind
     | Updated
 
 
-type alias AssetsLoadedIds =
+type alias LoadedIds =
     Set Index
 
 
-type alias AssetsFetched =
+type alias FetchedPixels =
     Dict Index Pixel
 
 
@@ -154,7 +150,7 @@ type alias Handler =
 
 init : Assets
 init =
-    AssetsNotLoaded
+    NotLoaded
 
 
 load : Maybe BlockNumber -> Handler
@@ -163,7 +159,7 @@ load bk wallet assets =
         load_ address =
             case address of
                 Just addr ->
-                    ( initLoadingAssets bk assets
+                    ( initLoadingData bk assets
                     , LoadPage ( addr, bk, 0 )
                     )
 
@@ -171,10 +167,10 @@ load bk wallet assets =
                     ( assets, NoAction )
     in
     case ( wallet, assets ) of
-        ( Wallet { address }, AssetsNotLoaded ) ->
+        ( Wallet { address }, NotLoaded ) ->
             load_ address
 
-        ( Wallet { address }, AssetsLoaded _ ) ->
+        ( Wallet { address }, Loaded _ ) ->
             load_ address
 
         _ ->
@@ -184,8 +180,8 @@ load bk wallet assets =
 sort : Rank -> Assets -> Assets
 sort rank assets =
     case assets of
-        AssetsLoaded asts ->
-            AssetsLoaded
+        Loaded asts ->
+            Loaded
                 { asts
                     | list = asts.list |> sortAssetsResult rank asts.timeOrder
                     , rank = rank
@@ -198,8 +194,8 @@ sort rank assets =
 updateByPixel : Pixel -> Assets -> Assets
 updateByPixel pixel assets =
     case assets of
-        AssetsLoaded ({ changes, fetchedPixels, loadedIds, list, timeOrder } as asts) ->
-            AssetsLoaded <|
+        Loaded ({ changes, fetchedPixels, loadedIds, list, timeOrder } as asts) ->
+            Loaded <|
                 if Dict.get pixel.index changes == Just Bought then
                     let
                         newfpxls =
@@ -258,8 +254,8 @@ updateByPixel pixel assets =
 updateByTransfer : WalletInfo -> TransferEvent -> Assets -> Assets
 updateByTransfer wallet t assets =
     case ( wallet, assets ) of
-        ( Wallet { address }, AssetsLoaded ({ changes, total } as asts) ) ->
-            AssetsLoaded <|
+        ( Wallet { address }, Loaded ({ changes, total } as asts) ) ->
+            Loaded <|
                 if address == Just t.from then
                     case changes |> Dict.get t.index of
                         Just Sold ->
@@ -292,8 +288,8 @@ updateByTransfer wallet t assets =
 updateByColor : ColorEvent -> Assets -> Assets
 updateByColor { index } assets =
     case assets of
-        AssetsLoaded ({ changes, loadedIds } as asts) ->
-            AssetsLoaded <|
+        Loaded ({ changes, loadedIds } as asts) ->
+            Loaded <|
                 if loadedBuNotChanged index changes loadedIds then
                     { asts | changes = changes |> Dict.insert index Updated }
 
@@ -307,8 +303,8 @@ updateByColor { index } assets =
 updateByPrice : PriceEvent -> Assets -> Assets
 updateByPrice { index } assets =
     case assets of
-        AssetsLoaded ({ changes, loadedIds } as asts) ->
-            AssetsLoaded <|
+        Loaded ({ changes, loadedIds } as asts) ->
+            Loaded <|
                 if loadedBuNotChanged index changes loadedIds then
                     { asts | changes = changes |> Dict.insert index Updated }
 
@@ -322,9 +318,9 @@ updateByPrice { index } assets =
 updateByUbi : WalletInfo -> UbiEvent -> Assets -> Assets
 updateByUbi wallet { index, collector } assets =
     case ( wallet, assets ) of
-        ( Wallet { address }, AssetsLoaded ({ changes, collectedIds } as asts) ) ->
+        ( Wallet { address }, Loaded ({ changes, collectedIds } as asts) ) ->
             if address == Just collector then
-                AssetsLoaded <|
+                Loaded <|
                     case changes |> Dict.get index of
                         Just Sold ->
                             asts
@@ -345,7 +341,7 @@ updateByUbi wallet { index, collector } assets =
 addPage : AssetsResultPage -> Handler
 addPage page wallet assets =
     case ( wallet, assets ) of
-        ( Wallet { address }, AssetsLoading loadingInfo ) ->
+        ( Wallet { address }, Loading loadingInfo ) ->
             case address of
                 Just addr ->
                     handleGetAssetsPage page addr loadingInfo
@@ -355,126 +351,6 @@ addPage page wallet assets =
 
         _ ->
             ( assets, NoAction )
-
-
-
--- Helpers
-
-
-handleGetAssetsPage : AssetsResultPage -> Address -> LoadingAssets -> ( Assets, Action )
-handleGetAssetsPage page addr loadingInfo =
-    if justOnePage page then
-        ( handleGetAssetsJustOnePage page loadingInfo, NoAction )
-
-    else if firstPage page then
-        let
-            newLoadingInfo =
-                if withinGetAssetsLimit page.total then
-                    addOnePage page loadingInfo
-
-                else
-                    loadingInfo
-        in
-        handleGetOwnPixeRequestAllPages page addr newLoadingInfo
-
-    else
-        ( handleGetOwnPixeAddOnePage page loadingInfo, NoAction )
-
-
-handleGetAssetsJustOnePage : AssetsResultPage -> LoadingAssets -> Assets
-handleGetAssetsJustOnePage ({ pixels } as page) loadingInfo =
-    assetsFinishLoading pixels page loadingInfo
-
-
-handleGetOwnPixeRequestAllPages : AssetsResultPage -> Address -> LoadingAssets -> ( Assets, Action )
-handleGetOwnPixeRequestAllPages page addr ({ block, loaded, rank } as loadingInfo) =
-    let
-        requestPage x =
-            case x of
-                Offset i ->
-                    LoadPage ( addr, block, i )
-
-                _ ->
-                    NoAction
-    in
-    case loaded of
-        Nothing ->
-            let
-                offsets =
-                    calculateOffsets page.total
-            in
-            ( AssetsLoading
-                { block = block
-                , loaded = Just offsets
-                , rank = rank
-                }
-            , Actions <| List.map requestPage <| Array.toList offsets
-            )
-
-        Just loaded_ ->
-            ( AssetsLoading loadingInfo
-            , Actions <| List.map requestPage <| Array.toList loaded_
-            )
-
-
-handleGetOwnPixeAddOnePage : AssetsResultPage -> LoadingAssets -> Assets
-handleGetOwnPixeAddOnePage page loadingInfo =
-    let
-        newLoadingInfo =
-            addOnePage page loadingInfo
-
-        newAssets =
-            AssetsLoading newLoadingInfo
-    in
-    if allPageLoaded newLoadingInfo.loaded then
-        case newLoadingInfo.loaded of
-            Nothing ->
-                newAssets
-
-            Just loaded ->
-                let
-                    aux a b =
-                        case a of
-                            Offset _ ->
-                                b
-
-                            Page p ->
-                                b ++ p.pixels
-
-                    pixels =
-                        Array.foldl aux [] loaded
-                in
-                assetsFinishLoading pixels page newLoadingInfo
-
-    else
-        newAssets
-
-
-initLoadingAssets : Maybe BlockNumber -> Assets -> Assets
-initLoadingAssets bk assets =
-    AssetsLoading { block = bk, loaded = Nothing, rank = getRank assets }
-
-
-assetsFinishLoading : AssetsResult -> AssetsResultPage -> LoadingAssets -> Assets
-assetsFinishLoading pixels page loadingInfo =
-    let
-        rank =
-            loadingInfo.rank
-
-        timeOrder =
-            pixelsToTimeOrder pixels
-    in
-    AssetsLoaded
-        { list = pixels |> sortAssetsResult rank timeOrder
-        , rank = rank
-        , timeOrder = timeOrder
-        , total = page.total
-        , exceededLimit = not <| withinGetAssetsLimit page.total
-        , changes = Dict.empty
-        , loadedIds = pixels |> List.map .index |> Set.fromList
-        , fetchedPixels = Dict.empty
-        , collectedIds = Set.empty
-        }
 
 
 totalPrice : LoadedData -> Price
@@ -513,19 +389,139 @@ changed { changes, collectedIds } =
     not <| (Dict.isEmpty changes && Set.isEmpty collectedIds)
 
 
-loadedBuNotChanged : Index -> Changes -> AssetsLoadedIds -> Bool
-loadedBuNotChanged idx cs ids =
-    Set.member idx ids && (not <| Dict.member idx cs)
+pixelCollected : Index -> CollectedIds -> Bool
+pixelCollected idx collectedIds =
+    collectedIds |> Set.member idx
 
 
-getFetchedPixel : Index -> AssetsFetched -> Maybe Pixel
+getFetchedPixel : Index -> FetchedPixels -> Maybe Pixel
 getFetchedPixel idx fetchedPixels =
     fetchedPixels |> Dict.get idx
 
 
-pixelCollected : Index -> CollectedIds -> Bool
-pixelCollected idx collectedIds =
-    collectedIds |> Set.member idx
+
+-- Helpers
+
+
+handleGetAssetsPage : AssetsResultPage -> Address -> LoadingData -> ( Assets, Action )
+handleGetAssetsPage page addr loadingInfo =
+    if justOnePage page then
+        ( handleGetAssetsJustOnePage page loadingInfo, NoAction )
+
+    else if firstPage page then
+        let
+            newLoadingInfo =
+                if withinGetAssetsLimit page.total then
+                    addOnePage page loadingInfo
+
+                else
+                    loadingInfo
+        in
+        handleGetOwnPixeRequestAllPages page addr newLoadingInfo
+
+    else
+        ( handleGetOwnPixeAddOnePage page loadingInfo, NoAction )
+
+
+handleGetAssetsJustOnePage : AssetsResultPage -> LoadingData -> Assets
+handleGetAssetsJustOnePage ({ pixels } as page) loadingInfo =
+    assetsFinishLoading pixels page loadingInfo
+
+
+handleGetOwnPixeRequestAllPages : AssetsResultPage -> Address -> LoadingData -> ( Assets, Action )
+handleGetOwnPixeRequestAllPages page addr ({ block, loadedPages, rank } as loadingInfo) =
+    let
+        requestPage x =
+            case x of
+                Offset i ->
+                    LoadPage ( addr, block, i )
+
+                _ ->
+                    NoAction
+    in
+    case loadedPages of
+        Nothing ->
+            let
+                offsets =
+                    calculateOffsets page.total
+            in
+            ( Loading
+                { block = block
+                , loadedPages = Just offsets
+                , rank = rank
+                }
+            , Actions <| List.map requestPage <| Array.toList offsets
+            )
+
+        Just loaded_ ->
+            ( Loading loadingInfo
+            , Actions <| List.map requestPage <| Array.toList loaded_
+            )
+
+
+handleGetOwnPixeAddOnePage : AssetsResultPage -> LoadingData -> Assets
+handleGetOwnPixeAddOnePage page loadingInfo =
+    let
+        newLoadingInfo =
+            addOnePage page loadingInfo
+
+        newAssets =
+            Loading newLoadingInfo
+    in
+    if allPageLoaded newLoadingInfo.loadedPages then
+        case newLoadingInfo.loadedPages of
+            Nothing ->
+                newAssets
+
+            Just loadedPages ->
+                let
+                    aux a b =
+                        case a of
+                            Offset _ ->
+                                b
+
+                            Page p ->
+                                b ++ p.pixels
+
+                    pixels =
+                        Array.foldl aux [] loadedPages
+                in
+                assetsFinishLoading pixels page newLoadingInfo
+
+    else
+        newAssets
+
+
+initLoadingData : Maybe BlockNumber -> Assets -> Assets
+initLoadingData bk assets =
+    Loading { block = bk, loadedPages = Nothing, rank = getRank assets }
+
+
+assetsFinishLoading : AssetsResult -> AssetsResultPage -> LoadingData -> Assets
+assetsFinishLoading pixels page loadingInfo =
+    let
+        rank =
+            loadingInfo.rank
+
+        timeOrder =
+            pixelsToTimeOrder pixels
+    in
+    Loaded
+        { list = pixels |> sortAssetsResult rank timeOrder
+        , rank = rank
+        , timeOrder = timeOrder
+        , total = page.total
+        , exceededLimit = not <| withinGetAssetsLimit page.total
+        , changes = Dict.empty
+        , loadedIds = pixels |> List.map .index |> Set.fromList
+        , fetchedPixels = Dict.empty
+        , collectedIds = Set.empty
+        }
+
+
+loadedBuNotChanged : Index -> Changes -> LoadedIds -> Bool
+loadedBuNotChanged idx cs ids =
+    Set.member idx ids && (not <| Dict.member idx cs)
 
 
 withinGetAssetsLimit : Int -> Bool
@@ -541,22 +537,22 @@ defaultAssestsSort =
 getRank : Assets -> Rank
 getRank assets =
     case assets of
-        AssetsNotLoaded ->
+        NotLoaded ->
             defaultAssestsSort
 
-        AssetsLoading { rank } ->
+        Loading { rank } ->
             rank
 
-        AssetsLoaded { rank } ->
+        Loaded { rank } ->
             rank
 
 
-pixelsToTimeOrder : List Pixel -> AssetsTiemOrder
+pixelsToTimeOrder : List Pixel -> TimeOrder
 pixelsToTimeOrder pxls =
     pxls |> List.indexedMap (\i pxl -> ( pxl.index, i )) |> Dict.fromList
 
 
-sortAssetsResult : Rank -> AssetsTiemOrder -> AssetsResult -> AssetsResult
+sortAssetsResult : Rank -> TimeOrder -> AssetsResult -> AssetsResult
 sortAssetsResult rank timeOrder =
     let
         sortWithTime order =
@@ -614,7 +610,7 @@ sortAssetsResult rank timeOrder =
 
 
 allPageLoaded : LoadedPages -> Bool
-allPageLoaded loaded_ =
+allPageLoaded loadedPages_ =
     let
         isOffset x =
             case x of
@@ -624,15 +620,15 @@ allPageLoaded loaded_ =
                 _ ->
                     False
     in
-    case loaded_ of
+    case loadedPages_ of
         Nothing ->
             False
 
-        Just loaded ->
-            loaded |> Array.filter isOffset |> Array.isEmpty
+        Just loadedPages ->
+            loadedPages |> Array.filter isOffset |> Array.isEmpty
 
 
-addOnePage : AssetsResultPage -> LoadingAssets -> LoadingAssets
+addOnePage : AssetsResultPage -> LoadingData -> LoadingData
 addOnePage page loadingInfo =
     let
         pageN =
@@ -642,14 +638,14 @@ addOnePage page loadingInfo =
             Page <| { page | pixels = page.pixels }
 
         offsets =
-            case loadingInfo.loaded of
+            case loadingInfo.loadedPages of
                 Nothing ->
                     calculateOffsets page.total
 
-                Just loaded ->
-                    loaded
+                Just loadedPages ->
+                    loadedPages
     in
-    { loadingInfo | loaded = Just <| Array.set pageN page_ offsets }
+    { loadingInfo | loadedPages = Just <| Array.set pageN page_ offsets }
 
 
 justOnePage : AssetsResultPage -> Bool
