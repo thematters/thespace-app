@@ -551,9 +551,9 @@ exit pb =
 -- Helpers
 
 
-stepLenght : Int
-stepLenght =
-    120
+stepLength : Int
+stepLength =
+    100
 
 
 limit : ForwardTimeline -> Progress
@@ -688,17 +688,11 @@ eventToInfoColorChange { blockNumber, index, color } =
 stepForward : Int -> ForwardTimeline -> ( Int, Action )
 stepForward i timeline =
     let
-        historyLen =
-            Array.length timeline
-
-        stepLen =
-            historyLen // stepLenght |> max stepLenght
-
         newProgress =
-            i + stepLen |> safeProgress timeline
+            i + stepLength |> safeProgress timeline
 
         cs =
-            Array.slice i (i + stepLen) timeline
+            Array.slice i newProgress timeline
     in
     ( newProgress, Forward cs )
 
