@@ -345,7 +345,7 @@ async function render(cmd) {
 
 // canvas port registration ///////////////////////////////////////////////////
 
-export function registerRender(elmapp, canvas, minimap) {
+export function initCanvas(elmapp, canvas, minimap) {
     app = elmapp
     ctx = canvas.getContext("2d")
     mmctx = minimap.getContext("2d")

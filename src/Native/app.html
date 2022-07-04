@@ -9,10 +9,10 @@
     <main></main>
     <script src="/src/Native/elmapp.js"></script>
     <script type="module">
-        import { registerRender } from "/src/Native/canvas.js"
-        import { registerRpc } from "/src/Native/rpc.js"
+        import { initCanvas } from "/src/Native/canvas.js"
+        import { initRpc } from "/src/Native/rpc.js"
         import { initApp } from "/src/Native/init.js"
-        initApp(Elm, registerRender, registerRpc, "#canvas", "#minimap")
+        initApp(Elm, initCanvas, initRpc, "#canvas", "#minimap")
     </script>
 </body>
 </html>

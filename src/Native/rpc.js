@@ -1,9 +1,63 @@
+const fakeNewHeads = true
+const blockInterval = 2000
+const reconnectDelay = 2000
+
 let env = "prod"
 let debug = false
 let wsClosed = false
 
-const reconnectDelay = 2000
+let fakeNewHeadLimit = undefined
+let fakeNewHeadCount = undefined
+let blockNumber = undefined
 
+
+// fake newHead within fakeNewHeadLimit
+function subscribeNewHeads(msg, app, ws) {
+    if (fakeNewHeads) {
+        app.ports.rpcSocketIn.send({
+            jsonrpc: "2.0",
+            id: "bsub",
+            result: "0x00000000000000000000000000000000"
+        })
+        setTimeout(newHead, blockInterval, app, ws)
+    } else {
+        ws.send(JSON.stringify(msg))
+    }
+}
+
+function newHead(app, ws) {
+    if (typeof blockNumber === "undefined" ||
+        fakeNewHeadCount >= fakeNewHeadLimit) {
+        getNewHead(ws)
+        fakeNewHeadCount = 0
+    } else {
+        fakeNewHead(app)
+    }
+    setTimeout(newHead, blockInterval, app, ws)
+}
+
+function getNewHead(ws) {
+    if (debug) console.time("bk")
+    ws.send(JSON.stringify({
+        jsonrpc: "2.0",
+        id: "bk",
+        method: "eth_blockNumber",
+        params: []
+    }))
+}
+
+function fakeNewHead(app) {
+    fakeNewHeadCount += 1
+    blockNumber += 1
+    if (debug) console.log("fake newHead:", blockNumber)
+    app.ports.rpcSocketIn.send({
+        jsonrpc: "2.0",
+        id: "bk",
+        result: `0x${blockNumber.toString(16)}`
+    })
+}
+
+// rpc event handlers
 function onOpen(app) {
     return () => {
         if (wsClosed) {
@@ -15,64 +69,7 @@ function onOpen(app) {
     }
 }
 
-const fakeNewHeads = true
-// const blockInterval = 1000
-const blockInterval = 2000
-// const fakeNewHeadLimit = 5
-const fakeNewHeadLimit = 60
-let fakeNewHeadCount = 0
-let blockNumber = undefined
-
-function getRealNewHead(ws) {
-    const msg = {
-        jsonrpc: "2.0",
-        id: "bk",
-        method: "eth_blockNumber",
-        params: []
-    }
-    console.log(">>> Get NewHead")
-    if (debug) console.time("bk")
-    ws.send(JSON.stringify(msg))
-}
-
-function getFakeNewHead(app) {
-    fakeNewHeadCount += 1
-    blockNumber += 1
-    const msg = {
-        jsonrpc: "2.0",
-        id: "bk",
-        result: `0x${blockNumber.toString(16)}`
-    }
-    console.log(">>> Fake NewHead:", blockNumber)
-    app.ports.rpcSocketIn.send(msg)
-}
-
-function getNewHead(ws, app) {
-    if (typeof blockNumber === "undefined" ||
-        fakeNewHeadCount >= fakeNewHeadLimit) {
-        getRealNewHead(ws)
-        fakeNewHeadCount = 0
-    } else {
-        getFakeNewHead(app)
-    }
-    setTimeout(getNewHead, blockInterval, ws, app)
-}
-
-function subscribeNewHeads(msg, ws, app) {
-    if (fakeNewHeads) {
-        const subMsg = {
-            jsonrpc: "2.0",
-            id: "bsub",
-            result: "0x00000000000000000000000000000000"
-        }
-        app.ports.rpcSocketIn.send(subMsg)
-        setTimeout(getNewHead, blockInterval, ws, app)
-    } else {
-        ws.send(JSON.stringify(msg))
-    }
-}
-
-function onSend(ws, app) {
+function onSend(app, ws) {
     return msg => {
         if (debug) {
             console.log("Out:", msg)
@@ -84,7 +81,7 @@ function onSend(ws, app) {
             msg.params.push("latest")
         // fake subscribe to NewHeads on prod
         if (msg.method === "eth_subscribe" && msg.params[0] === "newHeads") {
-            subscribeNewHeads(msg, ws, app)
+            subscribeNewHeads(msg, app, ws)
         } else {
             ws.send(JSON.stringify(msg))
         }
@@ -100,12 +97,7 @@ function onMessage(app) {
         }
         if (fakeNewHeads && msg.id === "bk") {
             blockNumber = Number(msg.result)
-            if (debug)
-                console.log(
-                    ">>> blockNumber:",
-                    blockNumber,
-                    `(0x${blockNumber.toString(16)})`
-                )
+            if (debug) console.log("real newHead:", blockNumber)
         }
         app.ports.rpcSocketIn.send(msg)
     }
@@ -134,9 +126,10 @@ function onClose(app, rpc, oldSocket, oldSendHandler) {
     }
 }
 
+// init/deinit
 function initSocket(app, rpc) {
     let ws = new WebSocket(rpc)
-    let sendHandler = onSend(ws, app)
+    let sendHandler = onSend(app, ws)
     ws.onopen = onOpen(app)
     ws.onclose = onClose(app, rpc, ws, sendHandler)
     ws.onmessage = onMessage(app)
@@ -313,7 +306,7 @@ async function initWallet(app) {
     app.ports.walletOut.subscribe(walletHandler)
 }
 
-export function registerRpc(app) {
+export function initRpc(app) {
 
     addEventListener('visibilitychange', event => {
         if (wsClosed && document.visibilityState === "visible")
@@ -324,6 +317,8 @@ export function registerRpc(app) {
         (data) => {
             env = data.env
             debug = data.debug
+            fakeNewHeadLimit = debug ? 5 : 60
+            fakeNewHeadCount = 0
             initSocket(app, data.rpc)
             initWallet(app)
         }
