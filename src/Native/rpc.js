@@ -11,18 +11,13 @@ let fakeNewHeadCount = undefined
 let blockNumber = undefined
 
 
-// fake newHead within fakeNewHeadLimit
-function subscribeNewHeads(msg, app, ws) {
-    if (fakeNewHeads) {
-        app.ports.rpcSocketIn.send({
-            jsonrpc: "2.0",
-            id: "bsub",
-            result: "0x00000000000000000000000000000000"
-        })
-        setTimeout(newHead, blockInterval, app, ws)
-    } else {
-        ws.send(JSON.stringify(msg))
-    }
+function fakeSubscribeNewHeads(app, ws) {
+    app.ports.rpcSocketIn.send({
+        jsonrpc: "2.0",
+        id: "bsub",
+        result: "0x00000000000000000000000000000000"
+    })
+    setTimeout(newHead, blockInterval, app, ws)
 }
 
 function newHead(app, ws) {
@@ -49,7 +44,7 @@ function getNewHead(ws) {
 function fakeNewHead(app) {
     fakeNewHeadCount += 1
     blockNumber += 1
-    if (debug) console.log("fake newHead:", blockNumber)
+    if (debug) console.log(`fake newHead[${fakeNewHeadCount}]: ${blockNumber}`)
     app.ports.rpcSocketIn.send({
         jsonrpc: "2.0",
         id: "bk",
@@ -75,13 +70,13 @@ function onSend(app, ws) {
             console.log("Out:", msg)
             if (typeof msg.id !== "undefined") console.time(msg.id)
         }
-        // Alchemy doesn't requrie `latest`, but seems majority of the 
-        // providers do.
+        // seems majority of the providers require `latest` (Alchemy doesn't)
         if (msg.method === "eth_call" && msg.params.length === 1)
             msg.params.push("latest")
-        // fake subscribe to NewHeads on prod
-        if (msg.method === "eth_subscribe" && msg.params[0] === "newHeads") {
-            subscribeNewHeads(msg, app, ws)
+        if (fakeNewHeads &&
+            msg.method === "eth_subscribe" &&
+            msg.params[0] === "newHeads") {
+            fakeSubscribeNewHeads(app, ws)
         } else {
             ws.send(JSON.stringify(msg))
         }
@@ -95,7 +90,7 @@ function onMessage(app) {
             console.log("In:", msg)
             if (typeof msg.id !== "undefined") console.timeEnd(msg.id)
         }
-        if (fakeNewHeads && msg.id === "bk") {
+        if (msg.id === "bk" && fakeNewHeads) {
             blockNumber = Number(msg.result)
             if (debug) console.log("real newHead:", blockNumber)
         }
@@ -317,7 +312,7 @@ export function initRpc(app) {
         (data) => {
             env = data.env
             debug = data.debug
-            fakeNewHeadLimit = debug ? 5 : 60
+            fakeNewHeadLimit = debug ? 10 : 60
             fakeNewHeadCount = 0
             initSocket(app, data.rpc)
             initWallet(app)
