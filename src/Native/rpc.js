@@ -139,6 +139,7 @@ function deinitSocket(app, ws, sendHandler) {
 }
 
 async function initWallet(app) {
+
     const send = (msg) => {
         if (debug) console.log("Wallet In:", msg)
         app.ports.walletIn.send(msg)
@@ -303,7 +304,7 @@ async function initWallet(app) {
 
 export function initRpc(app) {
 
-    addEventListener('visibilitychange', event => {
+    addEventListener('visibilitychange', evt => {
         if (wsClosed && document.visibilityState === "visible")
             window.location.reload()
     })
