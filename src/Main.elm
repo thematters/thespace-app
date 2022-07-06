@@ -267,7 +267,12 @@ update msg model =
                     }
                         |> resetModel
             in
-            ( m, C.reset m.canvas m.winSize )
+            ( m
+            , Cmd.batch
+                [ C.reset m.canvas m.winSize
+                , clearUrlParams model.urlKey
+                ]
+            )
 
         ZoomIn ->
             handleZoom model In model.cellPos
@@ -294,28 +299,38 @@ update msg model =
                 m =
                     model |> resetModel
             in
-            ( m, C.transform m.canvas )
+            ( m
+            , Cmd.batch [ C.transform m.canvas, clearUrlParams model.urlKey ]
+            )
 
         MapMouseDown xy ->
-            ( { model
+            let
+                m =
+                    model |> removeSelectCell
+            in
+            ( { m
                 | dragging = MapDragging xy
                 , pagePos = xy
-                , cellPos = posToCell model.canvas xy
+                , cellPos = posToCell m.canvas xy
               }
-            , Cmd.none
+            , clearUrlParams m.urlKey
             )
 
         MapTouchDown xy ->
-            ( if model.pinch == Nothing then
-                { model
+            let
+                m =
+                    model |> removeSelectCell
+            in
+            ( if m.pinch == Nothing then
+                { m
                     | dragging = MapDragging xy
                     , pagePos = xy
-                    , cellPos = posToCell model.canvas xy
+                    , cellPos = posToCell m.canvas xy
                 }
 
               else
-                model
-            , Cmd.none
+                m
+            , clearUrlParams m.urlKey
             )
 
         MapPinchDown dis ->
@@ -447,8 +462,15 @@ update msg model =
                 , cellPos = indexToCell idx
                 , selectCell = LoadingCell idx
               }
-            , Cmd.batch [ C.transform cvs, Rpc.getPixel idx ]
+            , Cmd.batch
+                [ C.transform cvs
+                , Rpc.getPixel idx
+                , setSelectCellUrl model.urlKey <| indexToCell idx
+                ]
             )
+
+        ClearSelectedCell ->
+            ( { model | selectCell = NoCell }, clearUrlParams model.urlKey )
 
         TickColor cid ->
             let
@@ -562,9 +584,6 @@ update msg model =
                     model
             , Cmd.none
             )
-
-        ClearSelectedCell ->
-            ( { model | selectCell = NoCell }, Cmd.none )
 
         -- Sidebar
         SidebarModeSwitch mode ->
@@ -697,27 +716,6 @@ update msg model =
 
 
 
--- Handler Helpers
-
-
-resetModel : Model -> Model
-resetModel model =
-    { model | canvas = C.resetTransform model.winSize }
-        |> removeMouseFlags
-        |> removeSelectCell
-
-
-removeMouseFlags : Model -> Model
-removeMouseFlags model =
-    { model | dragging = NotDragging }
-
-
-removeSelectCell : Model -> Model
-removeSelectCell model =
-    { model | selectCell = NoCell }
-
-
-
 -- User Interaction Handlers
 
 
@@ -746,7 +744,7 @@ handleDraggingEnd model =
     ( model |> removeMouseFlags, Cmd.none )
 
 
-handleSelectCell : Model -> Cell -> ( Model, Cmd msg )
+handleSelectCell : Model -> Cell -> ( Model, Cmd Msg )
 handleSelectCell model cell =
     let
         m =
@@ -801,20 +799,23 @@ handleSelectCell model cell =
             cellToIndex cell
     in
     ( { m | canvas = cvs, selectCell = LoadingCell index }
-    , Cmd.batch [ C.transform cvs, Rpc.getPixel index ]
+    , Cmd.batch
+        [ C.transform cvs
+        , Rpc.getPixel index
+        , setSelectCellUrl model.urlKey cell
+        ]
     )
 
 
-handleMapDragging : Model -> PositionDelta -> ( Model, Cmd msg )
+handleMapDragging : Model -> PositionDelta -> ( Model, Cmd Msg )
 handleMapDragging model { dx, dy } =
     let
-        m =
-            model |> removeSelectCell
-
         canvas =
-            m.canvas |> C.moveTransform dx dy m.winSize
+            model.canvas |> C.moveTransform dx dy model.winSize
     in
-    ( { m | canvas = canvas }, C.transform canvas )
+    ( { model | canvas = canvas }
+    , C.transform canvas
+    )
 
 
 handleMiniMapDragging : Model -> PositionDelta -> ( Model, Cmd msg )
@@ -840,6 +841,23 @@ handleMiniMapDragging m { dx, dy } =
             { cvs | dx = mmdx, dy = mmdy, zoom = cvs.zoom }
     in
     ( { m | canvas = canvas }, C.transform canvas )
+
+
+resetModel : Model -> Model
+resetModel model =
+    { model | canvas = C.resetTransform model.winSize }
+        |> removeMouseFlags
+        |> removeSelectCell
+
+
+removeMouseFlags : Model -> Model
+removeMouseFlags model =
+    { model | dragging = NotDragging }
+
+
+removeSelectCell : Model -> Model
+removeSelectCell model =
+    { model | selectCell = NoCell }
 
 
 
@@ -900,15 +918,7 @@ handlePlaybackAction model action =
 
         PB.EnterPlayback ->
             ( model
-            , case model.urlKey of
-                Nothing ->
-                    C.enterPlayback
-
-                Just key ->
-                    Cmd.batch
-                        [ C.enterPlayback
-                        , Nav.replaceUrl key "#playback"
-                        ]
+            , Cmd.batch [ C.enterPlayback, setPlaybackUrl model.urlKey ]
             )
 
         PB.Forward cs ->
@@ -929,16 +939,41 @@ handlePlaybackAction model action =
                 , sidebarMode = autoSiebarMode model.winSize model.sidebarMode
                 , miniMapMode = autoMiniMapMode model.winSize
               }
-            , case model.urlKey of
-                Nothing ->
-                    C.endPlayback
-
-                Just key ->
-                    Cmd.batch [ C.endPlayback, Nav.replaceUrl key "/" ]
+            , Cmd.batch [ C.endPlayback, clearUrlParams model.urlKey ]
             )
 
         PB.NoAction ->
             ( model, Cmd.none )
+
+
+clearUrlParams : Maybe Nav.Key -> Cmd Msg
+clearUrlParams urlKey =
+    case urlKey of
+        Nothing ->
+            Cmd.none
+
+        Just key ->
+            Nav.replaceUrl key "/"
+
+
+setPlaybackUrl : Maybe Nav.Key -> Cmd Msg
+setPlaybackUrl urlKey =
+    case urlKey of
+        Nothing ->
+            Cmd.none
+
+        Just key ->
+            Nav.replaceUrl key "#playback"
+
+
+setSelectCellUrl : Maybe Nav.Key -> Cell -> Cmd Msg
+setSelectCellUrl urlKey cell =
+    case urlKey of
+        Nothing ->
+            Cmd.none
+
+        Just key ->
+            Nav.replaceUrl key <| "#" ++ cellString cell
 
 
 
@@ -980,7 +1015,6 @@ handleRpcMessageRecieved model msg =
                   <|
                     cidToSnapshotUri snapshot.cid
                 , Rpc.getLatestColorEvents snapshot.blockNumber
-                , Rpc.getBlockNumber
                 , Rpc.watchNewHeads
                 , Rpc.watchColor
                 , Rpc.watchPrice

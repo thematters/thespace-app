@@ -10,6 +10,9 @@ let fakeNewHeadsLimit = undefined
 let fakeNewHeadsCount = undefined
 let blockNumber = undefined
 
+// Helpers
+
+function reload() { window.location.href = "" }
 
 function fakeSubscribeNewHeads(app, ws) {
     app.ports.rpcSocketIn.send({
@@ -201,7 +204,7 @@ async function initWallet(app) {
 
         // refresh app
         if (msg.method === "reinitApp") {
-            window.location.reload()
+            reload()
             return
         }
 
@@ -306,7 +309,7 @@ export function initRpc(app) {
 
     addEventListener('visibilitychange', evt => {
         if (wsClosed && document.visibilityState === "visible")
-            window.location.reload()
+            reload()
     })
 
     app.ports.openRpcSocket.subscribe(
