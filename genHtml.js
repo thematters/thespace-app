@@ -46,12 +46,11 @@ const html = `<!DOCTYPE html>
     <link rel="shortcut icon" href="/favicon.svg" type="image/x-icon" />
     <meta name="viewport" content="width=device-width, initial-scale=0.7">${seo}${robot}
     <style>body{margin:0;overflow:hidden;}</style>
-</head>
-<body>
-    <main></main>
-    <script src="/app.min.js?v=${md5sum}"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=${ga}"></script>
     <script>window.dataLayer=window.dataLayer||[]; function gtag(){dataLayer.push(arguments);} gtag('js', new Date); gtag('config', '${ga}', {page_path: window.location.pathname});</script>
+</head>
+<body>
+    <script src="/app.min.js?v=${md5sum}"></script>
 </body>
 </html>`
 

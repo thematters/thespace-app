@@ -2,11 +2,11 @@ module Main exposing (main)
 
 import Browser
 import Browser.Events as E
+import Browser.Navigation as Nav
 import Canvas as C
 import Config exposing (..)
 import Data exposing (..)
 import Dict
-import Html.Styled exposing (Html, toUnstyled)
 import InfiniteList
 import Json.Decode as D exposing (Decoder)
 import Json.Encode exposing (Value)
@@ -15,20 +15,19 @@ import Model.Assets as A
 import Model.Playback as PB
 import Msg exposing (Msg(..))
 import Rpc exposing (RpcResult(..))
-import View exposing (view)
-
-
-
--- Main
+import Url exposing (Url)
+import View
 
 
 main : Program Flags Model Msg
 main =
-    Browser.element
+    Browser.application
         { init = init
         , update = update
+        , view = View.view
         , subscriptions = subscriptions
-        , view = view >> toUnstyled
+        , onUrlChange = \_ -> NoOp
+        , onUrlRequest = \_ -> NoOp
         }
 
 
@@ -36,34 +35,9 @@ main =
 -- Init
 
 
-init : Flags -> ( Model, Cmd Msg )
-init { winW, winH, centerCell, zoom } =
-    let
-        model =
-            initModel
-
-        canvas =
-            model.canvas
-
-        initZoom =
-            case zoom of
-                Nothing ->
-                    minZoom
-
-                Just z ->
-                    z |> toFloat |> clamp minZoom maxZoom
-    in
-    ( { model
-        | winSize = ( winW, winH )
-        , selectCell =
-            case centerCell of
-                Nothing ->
-                    NoCell
-
-                Just cell ->
-                    LoadingCell <| cellToIndex cell
-        , canvas = { canvas | zoom = initZoom }
-      }
+init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init { winW, winH } _ key =
+    ( { initModel | winSize = ( winW, winH ), urlKey = Just key }
     , Rpc.openSocket
     )
 
@@ -925,7 +899,17 @@ handlePlaybackAction model action =
             )
 
         PB.EnterPlayback ->
-            ( model, C.enterPlayback )
+            ( model
+            , case model.urlKey of
+                Nothing ->
+                    C.enterPlayback
+
+                Just key ->
+                    Cmd.batch
+                        [ C.enterPlayback
+                        , Nav.replaceUrl key "#playback"
+                        ]
+            )
 
         PB.Forward cs ->
             ( model, C.forward cs )
@@ -945,7 +929,12 @@ handlePlaybackAction model action =
                 , sidebarMode = autoSiebarMode model.winSize model.sidebarMode
                 , miniMapMode = autoMiniMapMode model.winSize
               }
-            , C.endPlayback
+            , case model.urlKey of
+                Nothing ->
+                    C.endPlayback
+
+                Just key ->
+                    Cmd.batch [ C.endPlayback, Nav.replaceUrl key "/" ]
             )
 
         PB.NoAction ->
@@ -1569,12 +1558,3 @@ mouseEventDecoder msg =
         (\x y -> msg <| position x y)
         (D.field "pageX" D.float)
         (D.field "pageY" D.float)
-
-
-
--- View
-
-
-view : Model -> Html Msg
-view =
-    View.view

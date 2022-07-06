@@ -1,4 +1,3 @@
-const fakeNewHeads = true
 const blockInterval = 2000
 const reconnectDelay = 2000
 
@@ -6,8 +5,9 @@ let env = "prod"
 let debug = false
 let wsClosed = false
 
-let fakeNewHeadLimit = undefined
-let fakeNewHeadCount = undefined
+let fakeNewHeads = undefined
+let fakeNewHeadsLimit = undefined
+let fakeNewHeadsCount = undefined
 let blockNumber = undefined
 
 
@@ -22,9 +22,9 @@ function fakeSubscribeNewHeads(app, ws) {
 
 function newHead(app, ws) {
     if (typeof blockNumber === "undefined" ||
-        fakeNewHeadCount >= fakeNewHeadLimit) {
+        fakeNewHeadsCount >= fakeNewHeadsLimit) {
         getNewHead(ws)
-        fakeNewHeadCount = 0
+        fakeNewHeadsCount = 0
     } else {
         fakeNewHead(app)
     }
@@ -42,9 +42,9 @@ function getNewHead(ws) {
 }
 
 function fakeNewHead(app) {
-    fakeNewHeadCount += 1
+    fakeNewHeadsCount += 1
     blockNumber += 1
-    if (debug) console.log(`fake newHead[${fakeNewHeadCount}]: ${blockNumber}`)
+    if (debug) console.log(`fake newHead[${fakeNewHeadsCount}]: ${blockNumber}`)
     app.ports.rpcSocketIn.send({
         jsonrpc: "2.0",
         id: "bk",
@@ -313,8 +313,9 @@ export function initRpc(app) {
         (data) => {
             env = data.env
             debug = data.debug
-            fakeNewHeadLimit = debug ? 10 : 60
-            fakeNewHeadCount = 0
+            fakeNewHeads = data.fakeNewHeads
+            fakeNewHeadsLimit = debug ? 10 : 60
+            fakeNewHeadsCount = 0
             initSocket(app, data.rpc)
             initWallet(app)
         }

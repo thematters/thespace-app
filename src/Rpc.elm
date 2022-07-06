@@ -723,6 +723,9 @@ openSocket =
             [ ( "debug", E.bool env.debug )
             , ( "env", E.string env.name )
             , ( "rpc", E.string rpcSocketAddress )
+            , ( "fakeNewHeads", E.bool False )
+
+            --, ("fakeNewHeads", E.bool True)
             ]
 
 

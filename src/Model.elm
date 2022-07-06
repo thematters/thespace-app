@@ -1,5 +1,6 @@
 module Model exposing (..)
 
+import Browser.Navigation exposing (Key)
 import Config exposing (minPrice, minZoom, miniMapHeight, sidebarWidth)
 import Contract.Space exposing (ColorEvent, Pixel, TreasuryShare)
 import Data exposing (..)
@@ -12,8 +13,6 @@ import Model.Playback as PB
 type alias Flags =
     { winW : Int
     , winH : Int
-    , centerCell : Maybe Cell
-    , zoom : Maybe Int
     }
 
 
@@ -61,6 +60,9 @@ initModel =
     , notif = Just SplashNotif
     , queue = Dict.empty
     , playback = PB.init
+
+    -- Url
+    , urlKey = Nothing
     }
 
 
@@ -133,6 +135,9 @@ type alias Model =
 
     -- Playback
     , playback : PB.Playback
+
+    -- Url
+    , urlKey : Maybe Key
     }
 
 

@@ -1,6 +1,8 @@
 module View exposing (view)
 
-import Html.Styled exposing (Html, div)
+import Browser exposing (Document)
+import Html
+import Html.Styled exposing (div, toUnstyled)
 import Html.Styled.Lazy exposing (lazy2, lazy3, lazy5, lazy7)
 import Model exposing (AppMode(..), Model)
 import Msg exposing (Msg)
@@ -13,7 +15,11 @@ import View.Sidebar as Sidebar
 import View.Sponsor as Sponsor
 
 
-view : Model -> Html Msg
+
+--view : Model -> Html Msg
+
+
+view : Model -> Document Msg
 view m =
     let
         canvas =
@@ -74,7 +80,13 @@ view m =
 
                 Playback ->
                     playbackViews
+
+        body : List (Html.Html Msg)
+        body =
+            [ div [] (minimap :: (canvas :: views)) |> toUnstyled ]
     in
     -- We use this :: trick to make sure two canvases can be captured by Js
     -- See #19 in: https://github.com/elm/html/issues/53
-    div [] (minimap :: (canvas :: views))
+    { title = "TheSpace"
+    , body = body
+    }

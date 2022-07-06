@@ -393,6 +393,7 @@ installMetaMaskLink =
 
 getTokenLink : String
 getTokenLink =
+    --"https://thespace.game/claim"
     "https://app.uniswap.org/#/swap?chain=polygon&outputCurrency=0x264808855b0a6a5a318d238c6ee9f299179f27fc"
 
 

@@ -5,21 +5,6 @@ const observer = new MutationObserver(mutations => {
     }
 })
 
-const param = (name) => {
-    return new URLSearchParams(window.location.search).get(name)
-}
-
-const initCenterCell = () => {
-    const centerX = param("cx")
-    const centerY = param("cy")
-    if (centerX !== null && centerY !== null) {
-        return { x: centerX >> 0, y: centerY >> 0 }
-    } else {
-        return null
-    }
-}
-
-
 const waitElement = (selector) => {
     return new Promise(resolve => {
         if (document.querySelector(selector))
@@ -28,17 +13,10 @@ const waitElement = (selector) => {
     })
 }
 
-
 export function initApp(elmModule, renderRegFunc, rpcRegFunc, canvasId, mmapId) {
     const app = elmModule.Main.init({
         node: document.querySelector("main"),
-        flags: {
-            winW: window.innerWidth,
-            winH: window.innerHeight,
-            // cx&cy&z for init canvas transform
-            centerCell: initCenterCell(),
-            zoom: param("z") >> 0
-        }
+        flags: { winW: window.innerWidth, winH: window.innerHeight }
     })
     // this will be cleaner using async/await, but uglify-js doesn't agree,
     // seems some babel stuff can fix it, but just seems not worth it...
