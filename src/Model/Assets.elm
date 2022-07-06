@@ -582,18 +582,25 @@ sortAssetsResult rank timeOrder =
 
         sortWithBigIntAttribute attr order =
             let
-                cmp =
+                cmp x y =
                     case order of
                         Ascend ->
-                            BigInt.compare
+                            case BigInt.compare (attr x) (attr y) of
+                                EQ ->
+                                    compare (.index x) (.index y)
+
+                                r ->
+                                    r
 
                         Descend ->
-                            flippedBigIntCompare
-            in
-            List.sortWith <| \x y -> cmp (attr x) (attr y)
+                            case BigInt.compare (attr y) (attr x) of
+                                EQ ->
+                                    compare (.index x) (.index y)
 
-        flippedBigIntCompare a b =
-            BigInt.compare b a
+                                r ->
+                                    r
+            in
+            List.sortWith <| \x y -> cmp x y
     in
     case rank of
         ( RankTime, order ) ->
