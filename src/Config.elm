@@ -280,6 +280,16 @@ playbackWindow =
     env.playbackWindow
 
 
+maxRewindEvents : Int
+maxRewindEvents =
+    30000
+
+
+minRewindEvents : Int
+minRewindEvents =
+    3500
+
+
 
 -- Topcis
 
