@@ -10,10 +10,12 @@ import Parser
         , (|=)
         , DeadEnd
         , Parser
+        , end
         , int
         , map
         , oneOf
         , run
+        , spaces
         , succeed
         , symbol
         , variable
@@ -26,21 +28,21 @@ import Set exposing (Set)
 
 
 type Param
-    = Pixel PixelParam
+    = JumptoPixel JumpToPixelParam
     | Playback PlaybackParam
-    | PlaybackWithCenter PlaybackWithCenterParam
 
 
 parse : String -> Result (List DeadEnd) Param
 parse =
     {-
-       `parse` deals with common errors like:
-       - blockNumber < 1
-       - clamp zoomLevel into valid range
-       - clamp not into valid range
+       `parse` deals with these errors:
+           - force speed to valid value
+           - clamp zoomLevel into valid range
+           - force end >= 1
+           - clamp length into valid range
 
        The only runtime check left for user code is
-       to see if blockNumber is acutally within the Delta cid pointing
+       to see if `end` is acutally within the Delta `cid` pointing at
        or one Snapper window afterwards.
     -}
     run param
@@ -50,22 +52,17 @@ parse =
 -- Types
 
 
-type alias PixelParam =
-    Maybe Cell
+type alias JumpToPixelParam =
+    { to : Maybe Cell }
 
 
 type alias PlaybackParam =
     { speed : PB.Speed
     , zoom : ZoomLevel
-    , blockNumber : BlockNumber
-    , rewindCount : Int
+    , center : Maybe Cell
+    , end : BlockNumber -- playback end at this block
+    , length : Int -- playback this many color changes
     , cid : Cid
-    }
-
-
-type alias PlaybackWithCenterParam =
-    { pixel : PixelParam
-    , playback : PlaybackParam
     }
 
 
@@ -76,13 +73,21 @@ type alias PlaybackWithCenterParam =
 param : Parser Param
 param =
     oneOf
-        [ succeed Pixel |= pixel
+        [ succeed JumptoPixel |= jumpToPixel
         , succeed Playback |= playback
-        , succeed PlaybackWithCenter |= playbackWithCenter
         ]
 
 
-pixel : Parser PixelParam
+jumpToPixel : Parser JumpToPixelParam
+jumpToPixel =
+    succeed JumpToPixelParam
+        |. symbol "@"
+        |= pixel
+        |. spaces
+        |. end
+
+
+pixel : Parser (Maybe Cell)
 pixel =
     let
         validate c =
@@ -106,60 +111,59 @@ cell =
 playback : Parser PlaybackParam
 playback =
     succeed PlaybackParam
-        |. symbol "playback/"
+        |. symbol "#playback/"
         |= speed
         |. symbol "/"
         |= zoom
         |. symbol "/"
-        |= blockNumber
+        |= pixel
         |. symbol "/"
-        |= rewindCount
+        |= block
+        |. symbol "/"
+        |= length
         |. symbol "/"
         |= cid
 
 
-playbackWithCenter : Parser PlaybackWithCenterParam
-playbackWithCenter =
-    succeed PlaybackWithCenterParam
-        |= pixel
-        |. symbol "/"
-        |= playback
-
-
 speed : Parser PB.Speed
 speed =
-    oneOf
-        [ succeed PB.OneX |. symbol "1X"
-        , succeed PB.TwoX |. symbol "2X"
-        , succeed PB.FourX |. symbol "4X"
-        ]
+    let
+        validate i =
+            case i of
+                2 ->
+                    PB.TwoX
+
+                4 ->
+                    PB.FourX
+
+                _ ->
+                    PB.OneX
+    in
+    int
+        |. symbol "X"
+        |> map validate
 
 
 zoom : Parser ZoomLevel
 zoom =
-    zoomLevel |. symbol "Z"
-
-
-zoomLevel : Parser ZoomLevel
-zoomLevel =
     let
         validate =
             toFloat >> clamp minZoom maxZoom
     in
-    int |> map validate
+    int |. symbol "Z" |> map validate
 
 
-blockNumber : Parser Int
-blockNumber =
+block : Parser Int
+block =
     let
         validate =
-            min 1
+            max 1
     in
     int |> map validate
 
 
-rewindCount : Parser Int
-rewindCount =
+length : Parser Int
+length =
     let
         validate =
             clamp minRewindEvents maxRewindEvents
