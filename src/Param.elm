@@ -139,9 +139,7 @@ speed =
                 _ ->
                     PB.OneX
     in
-    int
-        |. symbol "X"
-        |> map validate
+    int |. symbol "X" |> map validate
 
 
 zoom : Parser ZoomLevel
@@ -187,6 +185,9 @@ isBase58Char c =
 
 base58Alphabet : Set Char
 base58Alphabet =
+    base58CharsStr |> String.toList |> Set.fromList
+
+
+base58CharsStr : String
+base58CharsStr =
     "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-        |> String.toList
-        |> Set.fromList
