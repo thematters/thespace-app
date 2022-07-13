@@ -948,32 +948,32 @@ handlePlaybackAction model action =
 
 clearUrlParams : Maybe Nav.Key -> Cmd Msg
 clearUrlParams urlKey =
-    case urlKey of
-        Nothing ->
-            Cmd.none
-
-        Just key ->
-            Nav.replaceUrl key "/"
+    --case urlKey of
+    --    Nothing ->
+    --        Cmd.none
+    --    Just key ->
+    --        Nav.replaceUrl key "/"
+    Cmd.none
 
 
 setPlaybackUrl : Maybe Nav.Key -> Cmd Msg
 setPlaybackUrl urlKey =
-    case urlKey of
-        Nothing ->
-            Cmd.none
-
-        Just key ->
-            Nav.replaceUrl key "#playback"
+    --case urlKey of
+    --    Nothing ->
+    --        Cmd.none
+    --    Just key ->
+    --        Nav.replaceUrl key "#playback"
+    Cmd.none
 
 
 setSelectCellUrl : Maybe Nav.Key -> Cell -> Cmd Msg
 setSelectCellUrl urlKey cell =
-    case urlKey of
-        Nothing ->
-            Cmd.none
-
-        Just key ->
-            Nav.replaceUrl key <| "#" ++ cellString cell
+    --case urlKey of
+    --    Nothing ->
+    --        Cmd.none
+    --    Just key ->
+    --        Nav.replaceUrl key <| "#" ++ cellString cell
+    Cmd.none
 
 
 
