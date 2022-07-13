@@ -1,8 +1,8 @@
-module Param exposing (Param(..), parse)
+module Param exposing (Param(..), parse, toString)
 
 import Config exposing (maxRewindEvents, maxZoom, minRewindEvents, minZoom)
 import Contract.Snapper exposing (Cid)
-import Data exposing (BlockNumber, Cell, ZoomLevel, cellInMap)
+import Data exposing (Cell, ZoomLevel, cellString)
 import Model.Playback as PB
 import Parser
     exposing
@@ -41,11 +41,33 @@ parse =
            - force end >= 1
            - clamp length into valid range
 
-       The only runtime check left for user code is
-       to see if `end` is acutally within the Delta `cid` pointing at
-       or one Snapper window afterwards.
+       runtime check left for user code:
+            - if `end` is acutally within the Delta `cid` pointing at
+            or one Snapper window afterwards.
+            - cell is in map area
     -}
     run param
+
+
+toString : Param -> String
+toString p =
+    case p of
+        JumptoPixel { to } ->
+            "@" ++ cellString to
+
+        Playback pb ->
+            "#playback/"
+                ++ PB.speedToString pb.speed
+                ++ "/"
+                ++ String.fromFloat pb.zoom
+                ++ "/"
+                ++ cellString pb.center
+                ++ "/"
+                ++ pb.cid
+                ++ "/"
+                ++ String.fromInt pb.endBlockOffset
+                ++ "/"
+                ++ String.fromInt pb.length
 
 
 
@@ -53,16 +75,20 @@ parse =
 
 
 type alias JumpToPixelParam =
-    { to : Maybe Cell }
+    { to : Cell }
 
 
 type alias PlaybackParam =
     { speed : PB.Speed
     , zoom : ZoomLevel
-    , center : Maybe Cell
-    , end : BlockNumber -- playback end at this block
-    , length : Int -- playback this many color changes
+    , center : Cell
     , cid : Cid
+
+    -- playback end at last block of the Delat cid pointing plus this offset
+    , endBlockOffset : Int
+
+    -- playback this many color changes
+    , length : Int
     }
 
 
@@ -82,22 +108,9 @@ jumpToPixel : Parser JumpToPixelParam
 jumpToPixel =
     succeed JumpToPixelParam
         |. symbol "@"
-        |= pixel
+        |= cell
         |. spaces
         |. end
-
-
-pixel : Parser (Maybe Cell)
-pixel =
-    let
-        validate c =
-            if cellInMap c then
-                Just c
-
-            else
-                Nothing
-    in
-    cell |> map validate
 
 
 cell : Parser Cell
@@ -116,13 +129,13 @@ playback =
         |. symbol "/"
         |= zoom
         |. symbol "/"
-        |= pixel
-        |. symbol "/"
-        |= block
-        |. symbol "/"
-        |= length
+        |= cell
         |. symbol "/"
         |= cid
+        |. symbol "/"
+        |= int
+        |. symbol "/"
+        |= length
 
 
 speed : Parser PB.Speed
@@ -140,33 +153,6 @@ speed =
                     PB.OneX
     in
     int |. symbol "X" |> map validate
-
-
-zoom : Parser ZoomLevel
-zoom =
-    let
-        validate =
-            toFloat >> clamp minZoom maxZoom
-    in
-    int |. symbol "Z" |> map validate
-
-
-block : Parser Int
-block =
-    let
-        validate =
-            max 1
-    in
-    int |> map validate
-
-
-length : Parser Int
-length =
-    let
-        validate =
-            clamp minRewindEvents maxRewindEvents
-    in
-    int |> map validate
 
 
 cid : Parser Cid
@@ -191,3 +177,21 @@ base58Alphabet =
 base58CharsStr : String
 base58CharsStr =
     "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+
+zoom : Parser ZoomLevel
+zoom =
+    let
+        validate =
+            toFloat >> clamp minZoom maxZoom
+    in
+    int |. symbol "Z" |> map validate
+
+
+length : Parser Int
+length =
+    let
+        validate =
+            clamp minRewindEvents maxRewindEvents
+    in
+    int |> map validate

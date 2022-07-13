@@ -2,6 +2,7 @@ module Config exposing (..)
 
 import BigInt exposing (BigInt)
 import Config.Env.Util exposing (Contracts, RpcProvider)
+import Config.Snapper as Snapper
 import Env exposing (env)
 import Eth.Types exposing (Address, Hex)
 import Eth.Utils exposing (addressToString, unsafeToHex)
@@ -282,12 +283,17 @@ playbackWindow =
 
 maxRewindEvents : Int
 maxRewindEvents =
-    30000
+    Snapper.maxRewindEvents
 
 
 minRewindEvents : Int
 minRewindEvents =
-    3500
+    Snapper.minRewindEvents
+
+
+rewindDeltaMaxEvents : Int
+rewindDeltaMaxEvents =
+    Snapper.rewindDeltaMaxEvents
 
 
 
