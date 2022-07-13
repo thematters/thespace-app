@@ -1134,6 +1134,8 @@ progress pb =
                            , property "-webkit-appearance" "none"
                            ]
                 , pseudoClass "-moz-range-thumb" progressPseudoStyle
+                , cursor pointer
+                , active [ cursor ewResize ]
                 ]
         in
         input
