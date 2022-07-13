@@ -53,10 +53,10 @@ toString : Param -> String
 toString p =
     case p of
         JumptoPixel { to } ->
-            "@" ++ cellString to
+            cellString to
 
         Playback pb ->
-            "#playback/"
+            "playback/"
                 ++ PB.speedToString pb.speed
                 ++ "/"
                 ++ String.fromFloat pb.zoom
@@ -83,11 +83,7 @@ type alias PlaybackParam =
     , zoom : ZoomLevel
     , center : Cell
     , cid : Cid
-
-    -- playback end at last block of the Delat cid pointing plus this offset
     , endBlockOffset : Int
-
-    -- playback this many color changes
     , length : Int
     }
 
@@ -107,7 +103,6 @@ param =
 jumpToPixel : Parser JumpToPixelParam
 jumpToPixel =
     succeed JumpToPixelParam
-        |. symbol "@"
         |= cell
         |. spaces
         |. end
@@ -124,7 +119,7 @@ cell =
 playback : Parser PlaybackParam
 playback =
     succeed PlaybackParam
-        |. symbol "#playback/"
+        |. symbol "playback/"
         |= speed
         |. symbol "/"
         |= zoom

@@ -14,7 +14,6 @@ import Model exposing (..)
 import Model.Assets as A
 import Model.Playback as PB
 import Msg exposing (Msg(..))
-import Param
 import Rpc exposing (RpcResult(..))
 import Url exposing (Url)
 import View
@@ -27,8 +26,22 @@ main =
         , update = update
         , view = View.view
         , subscriptions = subscriptions
-        , onUrlChange = \_ -> NoOp
-        , onUrlRequest = \_ -> NoOp
+        , onUrlChange =
+            --\_ -> NoOp
+            \i ->
+                let
+                    _ =
+                        Debug.log "urlChanged" i
+                in
+                NoOp
+        , onUrlRequest =
+            --\i ->
+            --    let
+            --        _ =
+            --            Debug.log "urlRequest" i
+            --    in
+            --    NoOp
+            \_ -> NoOp
         }
 
 
@@ -37,7 +50,11 @@ main =
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init { winW, winH } _ key =
+init { winW, winH } url key =
+    let
+        _ =
+            Debug.log "initUrl" url
+    in
     ( { initModel | winSize = ( winW, winH ), urlKey = Just key }
     , Rpc.openSocket
     )
