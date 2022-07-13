@@ -5,14 +5,14 @@
     <title>TheSpace(Develop)</title>
     <meta name="viewport" content="width=device-width, initial-scale=0.7">
     <style>body{margin:0;overflow:hidden;}</style></head>
-<body>
-    <main></main>
     <script src="/src/Native/elmapp.js"></script>
+<body>
+    <!-- <main></main> -->
     <script type="module">
-        import { registerRender } from "/src/Native/canvas.js"
-        import { registerRpc } from "/src/Native/rpc.js"
+        import { initCanvas } from "/src/Native/canvas.js"
+        import { initRpc } from "/src/Native/rpc.js"
         import { initApp } from "/src/Native/init.js"
-        initApp(Elm, registerRender, registerRpc, "#canvas", "#minimap")
+        initApp(Elm, initCanvas, initRpc, "#canvas", "#minimap")
     </script>
 </body>
 </html>

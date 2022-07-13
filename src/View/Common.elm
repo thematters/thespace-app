@@ -55,6 +55,11 @@ bigTextSize =
     18
 
 
+extraBigTextSize : Float
+extraBigTextSize =
+    20
+
+
 smallText : Px
 smallText =
     px smallTextSize
@@ -68,6 +73,11 @@ normalText =
 bigText : Px
 bigText =
     px bigTextSize
+
+
+extraBigText : Px
+extraBigText =
+    px extraBigTextSize
 
 
 
@@ -384,8 +394,22 @@ iconGreen i =
     icon_ green i
 
 
+iconHighlight : Html msg -> Html msg
+iconHighlight i =
+    icon_ highlightColor1 i
 
--- Loading Spinner
+
+
+-- Loading
+
+
+bouncingBalls : Float -> String -> Html msg
+bouncingBalls size color =
+    let
+        config =
+            { defaultConfig | color = "#" ++ color, size = size }
+    in
+    fromUnstyled <| render BouncingBalls config On
 
 
 spinner : Float -> String -> Html msg
@@ -394,7 +418,7 @@ spinner size color =
         config =
             { defaultConfig | color = "#" ++ color, size = size }
     in
-    fromUnstyled <| render BouncingBalls config On
+    fromUnstyled <| render Spinner config On
 
 
 
@@ -802,23 +826,12 @@ scrollBarWidth =
     10
 
 
-globalStyle : AppMode -> List (Html msg)
-globalStyle appmode =
+globalStyle : List (Html msg)
+globalStyle =
     -- set bgcolor / set font / disable user-select / scrollbar style
     let
         bgcolor =
-            case appmode of
-                RealtimeLoading ->
-                    bggray
-
-                Realtime ->
-                    bggray
-
-                PlaybackLoading ->
-                    secondary
-
-                Playback _ ->
-                    secondary
+            bggray
 
         fontface =
             Css.Global.typeSelector "@font-face"

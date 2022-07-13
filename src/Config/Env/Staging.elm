@@ -6,7 +6,19 @@ import Config.Network.Mainnet as Net
 
 rpcSocketAddress : String
 rpcSocketAddress =
+    --rpcSocketAddressDataHub
+    rpcSocketAddressAlchemy
+
+
+rpcSocketAddressAlchemy : String
+rpcSocketAddressAlchemy =
     "wss://polygon-mainnet.g.alchemy.com/v2/NLv95hqjMltinp-8MKwMYyJphTqn2YAp"
+
+
+
+--rpcSocketAddressDataHub : String
+--rpcSocketAddressDataHub =
+--    "wss://matic-mainnet--ws.datahub.figment.io/apikey/e62a4e148110be81b9e4ebe76e231558"
 
 
 erc20 : String
@@ -40,5 +52,7 @@ env =
     , rpcProvider = Net.rpcProvider
     , polyscanEndpoint = "https://polygonscan.com/"
     , snapshotUriPrefix = "https://d23t3m1s3moj89.cloudfront.net/"
+    , playbackWindow = 300
+    , genesisSnapshotCid = "Qmf9D3TQQ8twZ9igqoaFtQHshp2JoA54xVi3RGU6Q7uAoE"
     , debug = True
     }

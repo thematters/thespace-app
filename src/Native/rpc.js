@@ -1,9 +1,61 @@
+const blockInterval = 2000
+const reconnectDelay = 2000
+
 let env = "prod"
 let debug = false
 let wsClosed = false
 
-const reconnectDelay = 2000
+let fakeNewHeads = undefined
+let fakeNewHeadsLimit = undefined
+let fakeNewHeadsCount = undefined
+let blockNumber = undefined
 
+// Helpers
+
+function reload() { window.location.href = "" }
+
+function fakeSubscribeNewHeads(app, ws) {
+    app.ports.rpcSocketIn.send({
+        jsonrpc: "2.0",
+        id: "bsub",
+        result: "0x00000000000000000000000000000000"
+    })
+    setTimeout(newHead, blockInterval, app, ws)
+}
+
+function newHead(app, ws) {
+    if (typeof blockNumber === "undefined" ||
+        fakeNewHeadsCount >= fakeNewHeadsLimit) {
+        getNewHead(ws)
+        fakeNewHeadsCount = 0
+    } else {
+        fakeNewHead(app)
+    }
+    setTimeout(newHead, blockInterval, app, ws)
+}
+
+function getNewHead(ws) {
+    if (debug) console.time("bk")
+    ws.send(JSON.stringify({
+        jsonrpc: "2.0",
+        id: "bk",
+        method: "eth_blockNumber",
+        params: []
+    }))
+}
+
+function fakeNewHead(app) {
+    fakeNewHeadsCount += 1
+    blockNumber += 1
+    if (debug) console.log(`fake newHead[${fakeNewHeadsCount}]: ${blockNumber}`)
+    app.ports.rpcSocketIn.send({
+        jsonrpc: "2.0",
+        id: "bk",
+        result: `0x${blockNumber.toString(16)}`
+    })
+}
+
+// rpc event handlers
 function onOpen(app) {
     return () => {
         if (wsClosed) {
@@ -15,13 +67,22 @@ function onOpen(app) {
     }
 }
 
-function onSend(ws) {
+function onSend(app, ws) {
     return msg => {
         if (debug) {
             console.log("Out:", msg)
             if (typeof msg.id !== "undefined") console.time(msg.id)
         }
-        ws.send(JSON.stringify(msg))
+        // seems majority of the providers require `latest` (Alchemy doesn't)
+        if (msg.method === "eth_call" && msg.params.length === 1)
+            msg.params.push("latest")
+        if (fakeNewHeads &&
+            msg.method === "eth_subscribe" &&
+            msg.params[0] === "newHeads") {
+            fakeSubscribeNewHeads(app, ws)
+        } else {
+            ws.send(JSON.stringify(msg))
+        }
     }
 }
 
@@ -31,6 +92,10 @@ function onMessage(app) {
         if (debug) {
             console.log("In:", msg)
             if (typeof msg.id !== "undefined") console.timeEnd(msg.id)
+        }
+        if (msg.id === "bk" && fakeNewHeads) {
+            blockNumber = Number(msg.result)
+            if (debug) console.log("real newHead:", blockNumber)
         }
         app.ports.rpcSocketIn.send(msg)
     }
@@ -59,9 +124,10 @@ function onClose(app, rpc, oldSocket, oldSendHandler) {
     }
 }
 
+// init/deinit
 function initSocket(app, rpc) {
     let ws = new WebSocket(rpc)
-    let sendHandler = onSend(ws)
+    let sendHandler = onSend(app, ws)
     ws.onopen = onOpen(app)
     ws.onclose = onClose(app, rpc, ws, sendHandler)
     ws.onmessage = onMessage(app)
@@ -76,6 +142,7 @@ function deinitSocket(app, ws, sendHandler) {
 }
 
 async function initWallet(app) {
+
     const send = (msg) => {
         if (debug) console.log("Wallet In:", msg)
         app.ports.walletIn.send(msg)
@@ -137,7 +204,7 @@ async function initWallet(app) {
 
         // refresh app
         if (msg.method === "reinitApp") {
-            window.location.reload()
+            reload()
             return
         }
 
@@ -238,17 +305,20 @@ async function initWallet(app) {
     app.ports.walletOut.subscribe(walletHandler)
 }
 
-export function registerRpc(app) {
+export function initRpc(app) {
 
-    addEventListener('visibilitychange', event => {
+    addEventListener('visibilitychange', evt => {
         if (wsClosed && document.visibilityState === "visible")
-            window.location.reload()
+            reload()
     })
 
     app.ports.openRpcSocket.subscribe(
         (data) => {
             env = data.env
             debug = data.debug
+            fakeNewHeads = data.fakeNewHeads
+            fakeNewHeadsLimit = debug ? 10 : 60
+            fakeNewHeadsCount = 0
             initSocket(app, data.rpc)
             initWallet(app)
         }

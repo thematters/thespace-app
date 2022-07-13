@@ -1,6 +1,6 @@
 module View.Canvas exposing
     ( viewCanvas
-    , viewPointingHighlight
+    , viewHoverHighlight
     , viewQueuedHighlights
     , viewSelectHighlight
     )
@@ -70,8 +70,8 @@ viewCanvas dragging pagePos =
         []
 
 
-viewPointingHighlight : Dragging -> Transform -> Cell -> Html msg
-viewPointingHighlight dragging cvs cell =
+viewHoverHighlight : Dragging -> Transform -> Cell -> Html msg
+viewHoverHighlight dragging cvs cell =
     if dragging /= NotDragging || lowZoom cvs.zoom || cellNotInMap cell then
         C.phantomDiv
 

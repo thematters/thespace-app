@@ -10,6 +10,7 @@ import Data
         , Size
         , WalletInfo
         )
+import Http
 import InfiniteList
 import Json.Encode exposing (Value)
 import Model
@@ -20,20 +21,21 @@ import Model
         , SidebarInfoType(..)
         , SidebarUIMode(..)
         )
-import Model.Assets exposing (AssetsSort)
+import Model.Assets exposing (Rank)
+import Model.Playback exposing (DeltaData)
 
 
 type Msg
     = NoOp
       -- App Modes
     | AppModeChange AppMode
-    | PlaybackSpeedChange
+    | PlaybackSnapshotReady
+    | PlaybackRewindTimeline (List String)
+    | PlaybackPlay
     | PlaybackPause
-    | PlaybackStart
-    | PlaybackTick
-    | PlaybackSkipToStart
-    | PlaybackSkipToEnd
-    | PlaybackSlide String
+    | PlaybackSlide Int
+    | PlaybackTicked
+    | PlaybackCircleSpeed
       -- MiniMap Modes
     | MiniMapModeChange MiniMapMode
       -- Map / MiniMap Ops
@@ -56,7 +58,7 @@ type Msg
     | SidebarInfoSwitch SidebarInfoType
     | ScrollActivity InfiniteList.Model
     | ScrollAssets InfiniteList.Model
-    | SortAssets AssetsSort
+    | SortAssets Rank
     | LoadAssets
     | RefreshAssets
       -- Cell Ops
@@ -91,3 +93,4 @@ type Msg
     | RpcSocketReconnecting
     | RpcSocketReconnected
     | ReInitApp
+    | DeltaRecieved (Result Http.Error DeltaData)

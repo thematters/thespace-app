@@ -1,31 +1,28 @@
 module Model exposing (..)
 
-import Array exposing (Array)
-import Config
-    exposing
-        ( minPrice
-        , minZoom
-        , miniMapHeight
-        , sidebarWidth
-        )
+import Browser.Navigation exposing (Key)
+import Config exposing (minPrice, minZoom, miniMapHeight, sidebarWidth)
+import Contract.Space exposing (ColorEvent, Pixel, TreasuryShare)
 import Data exposing (..)
 import Dict exposing (Dict)
 import InfiniteList
 import Model.Assets as A
-import Model.Playback exposing (PlaybackConfig)
+import Model.Playback as PB
 
 
 type alias Flags =
     { winW : Int
     , winH : Int
-    , centerCell : Maybe Cell
-    , zoom : Maybe Int
     }
+
+
+type alias SubId =
+    Int
 
 
 initModel : Model
 initModel =
-    { mode = RealtimeLoading
+    { mode = Loading
 
     --winSize init to (1, 1) avoiding NaN/Infinity bullshit
     , winSize = ( 1, 1 )
@@ -59,10 +56,13 @@ initModel =
         , assetsInfList = InfiniteList.init
         }
     , acts = []
-    , assets = A.AssetsNotLoaded
+    , assets = A.init
     , notif = Just SplashNotif
-    , colorHistory = Array.empty
     , queue = Dict.empty
+    , playback = PB.init
+
+    -- Url
+    , urlKey = Nothing
     }
 
 
@@ -106,9 +106,6 @@ type alias Model =
     -- Init Map
     , mapStatus : MapStatus
 
-    -- Playback Color History
-    , colorHistory : Array ColorChange
-
     -- Current Selected Cell
     , selectCell : SelectCell
 
@@ -135,14 +132,19 @@ type alias Model =
 
     -- Notification
     , notif : Maybe Notification
+
+    -- Playback
+    , playback : PB.Playback
+
+    -- Url
+    , urlKey : Maybe Key
     }
 
 
 type AppMode
-    = RealtimeLoading
+    = Loading
     | Realtime
-    | PlaybackLoading
-    | Playback PlaybackConfig
+    | Playback
 
 
 type MiniMapMode
@@ -169,7 +171,7 @@ type alias SidebarInfLists =
 type MapStatus
     = MSLoading
     | MSSnapshotInited
-    | MSLatestColorLoaded (List (Maybe ColorEvent))
+    | MSLatestColorLoaded (List ColorEvent)
     | MSInited
 
 
@@ -244,8 +246,8 @@ initWatchIds =
     }
 
 
-responsiveMiniMapMode : Size -> MiniMapMode
-responsiveMiniMapMode ( _, winH ) =
+autoMiniMapMode : Size -> MiniMapMode
+autoMiniMapMode ( _, winH ) =
     if toFloat winH < 4 * miniMapHeight then
         CollapsedMiniMap
 
@@ -253,8 +255,8 @@ responsiveMiniMapMode ( _, winH ) =
         BirdeyeMiniMap
 
 
-responsiveSiebarMode : Size -> SidebarMode -> SidebarMode
-responsiveSiebarMode ( winW, _ ) ( _, infoType ) =
+autoSiebarMode : Size -> SidebarMode -> SidebarMode
+autoSiebarMode ( winW, _ ) ( _, infoType ) =
     if toFloat winW < 4 * sidebarWidth then
         ( CollapsedSidebar, infoType )
 
