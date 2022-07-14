@@ -274,10 +274,7 @@ update msg model =
                     { model
                         | winSize = winSize
                         , miniMapMode = autoMiniMapMode winSize
-                        , sidebarMode =
-                            autoSiebarMode
-                                winSize
-                                model.sidebarMode
+                        , sidebarMode = autoSiebarMode winSize model.sidebarMode
                         , sidebarInfLists =
                             { actsInfList = InfiniteList.init
                             , assetsInfList = InfiniteList.init
