@@ -26,7 +26,8 @@ registry =
 
 snapper : String
 snapper =
-    "0xc92c2944fe36ee4ddf7d160338ce2ef8c342c4ed"
+    --"0xc92c2944fe36ee4ddf7d160338ce2ef8c342c4ed"
+    "0xf496a86c20689f263af14ab2e59fd1296df71c27"
 
 
 env : Env
