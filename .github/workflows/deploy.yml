@@ -38,7 +38,6 @@ jobs:
           dist-id: EVWV6S8G4YU1I
           invalidation: /*
           private: true
-          cache: 31536000
           delete-removed: true
 
       - name: Deploy (Production)
@@ -51,5 +50,4 @@ jobs:
           dist-id: E29ZFXXINKSOH
           invalidation: /*
           private: true
-          cache: 31536000
           delete-removed: true
