@@ -50,4 +50,5 @@ jobs:
           dist-id: E29ZFXXINKSOH
           invalidation: /*
           private: true
+          cache: max-age=31536000
           delete-removed: true
