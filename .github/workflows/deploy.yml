@@ -38,6 +38,7 @@ jobs:
           dist-id: EVWV6S8G4YU1I
           invalidation: /*
           private: true
+          cache: max-age=31536000
           delete-removed: true
 
       - name: Deploy (Production)
