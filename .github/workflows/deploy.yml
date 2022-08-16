@@ -28,7 +28,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Deploy (Staging)
+      - name: Deploy htmls (Staging)
         if: (github.base_ref == 'develop') || ((github.event_name == 'push') && (github.ref_name == 'develop'))
         uses: reggionick/s3-deploy@v3
         with:
@@ -38,7 +38,20 @@ jobs:
           dist-id: EVWV6S8G4YU1I
           invalidation: /*
           private: true
-          delete-removed: true
+          filesToInclude: "*html"
+
+      - name: Deploy static assets (Staging)
+        if: (github.base_ref == 'develop') || ((github.event_name == 'push') && (github.ref_name == 'develop'))
+        uses: reggionick/s3-deploy@v3
+        with:
+          folder: current/stag
+          bucket: app-testnets.thespace.game
+          bucket-region: ap-southeast-1
+          dist-id: EVWV6S8G4YU1I
+          invalidation: /*
+          private: true
+          filesToInclude: "*js,*svg"
+          cache: 31536000
 
       - name: Deploy (Production)
         if: github.base_ref == 'main'
