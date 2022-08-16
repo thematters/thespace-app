@@ -53,7 +53,7 @@ jobs:
           files-to-include: "*[sg]"
           cache: 31536000
 
-      - name: Deploy (Production)
+      - name: Deploy htmls (Production)
         if: github.base_ref == 'main'
         uses: reggionick/s3-deploy@v3
         with:
@@ -63,4 +63,17 @@ jobs:
           dist-id: E29ZFXXINKSOH
           invalidation: /*
           private: true
-          delete-removed: true
+          files-to-include: "*html"
+
+      - name: Deploy static assets (Production)
+        if: github.base_ref == 'main'
+        uses: reggionick/s3-deploy@v3
+        with:
+          folder: current/prod
+          bucket: app.thespace.game
+          bucket-region: ap-southeast-1
+          dist-id: E29ZFXXINKSOH
+          invalidation: /*
+          private: true
+          files-to-include: "*[sg]"
+          cache: 31536000

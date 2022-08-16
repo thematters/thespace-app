@@ -81,6 +81,10 @@ These commands will:
 7. remove ```current/(prod|stag)/app.js``` and ```src/Native/elmappesm.js```
 8. restore backed up env
 
+### Caveat
+
+[github CI](.github/workflows/deploy.yml) only deploys files in `current/(prod|stag)/` matching "*html" or "*[jg]" glob.
+
 
 ## App Architecture
 
