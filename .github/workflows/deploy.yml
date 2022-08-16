@@ -38,7 +38,7 @@ jobs:
           dist-id: EVWV6S8G4YU1I
           invalidation: /*
           private: true
-          filesToInclude: "*html"
+          files-to-include: "*html"
 
       - name: Deploy static assets (Staging)
         if: (github.base_ref == 'develop') || ((github.event_name == 'push') && (github.ref_name == 'develop'))
@@ -50,7 +50,7 @@ jobs:
           dist-id: EVWV6S8G4YU1I
           invalidation: /*
           private: true
-          filesToInclude: "*js,*svg"
+          files-to-include: "*js,*svg"
           cache: 31536000
 
       - name: Deploy (Production)
