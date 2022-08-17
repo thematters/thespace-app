@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - dali
     types: [closed]
     paths:
       - 'current/**'
@@ -39,6 +40,19 @@ jobs:
           invalidation: /*
           private: true
           delete-removed: true
+
+      - name: Deploy (Dali)
+        if: github.base_ref == 'dali'
+        uses: reggionick/s3-deploy@v3
+        with:
+          folder: current/prod
+          bucket: dali.thespace.game
+          bucket-region: ap-southeast-1
+          dist-id: E2ZN628KM3GO76
+          invalidation: /*
+          private: true
+          delete-removed: true
+
 
       - name: Deploy (Production)
         if: github.base_ref == 'main'
