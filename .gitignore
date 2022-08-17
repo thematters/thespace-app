@@ -11,3 +11,6 @@ package-lock.json
 src/Native/elmapp.js
 
 *~
+
+.vscode/targets.log
+.vscode/configurationCache.log
