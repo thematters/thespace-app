@@ -1578,7 +1578,11 @@ handleRpcMessageRecieved model msg =
             handleAssets model <| A.addPage page
 
         RpcDeltaCids cids ->
-            handlePlayback model <| PB.initDeltaCids cids
+            if List.isEmpty cids then
+                handlePlayback model PB.initEmpty
+
+            else
+                handlePlayback model <| PB.initDeltaCids cids
 
         RpcError err ->
             ( { model | acts = ActError err :: model.acts }, Cmd.none )

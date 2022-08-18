@@ -16,6 +16,7 @@ module Model.Playback exposing
     , exit
     , init
     , initDeltaCids
+    , initEmpty
     , jumpTo
     , maxProgress
     , pause
@@ -181,6 +182,22 @@ init =
         }
 
 
+initEmpty : Handler
+initEmpty _ =
+    ( Ready
+        { status = Paused 0
+        , snapshotReady = False
+        , timelineReady = False
+        , speed = OneX
+        , snapshot = genesisSnapshotCid
+        , timeline = Array.empty
+        , rewindTimeline = Array.empty
+        , events = Array.empty
+        }
+    , InitSnapshot genesisSnapshotCid
+    )
+
+
 initDeltaCids : List Cid -> Handler
 initDeltaCids cids pb =
     case pb of
@@ -336,7 +353,7 @@ readyToEnter : Playback -> Bool
 readyToEnter pb =
     case pb of
         Ready { snapshotReady, timeline } ->
-            snapshotReady && Array.length timeline > 0
+            snapshotReady && Array.length timeline >= 0
 
         _ ->
             False
@@ -558,7 +575,8 @@ stepLength =
 
 limit : ForwardTimeline -> Progress
 limit =
-    Array.length >> dec
+    --Array.length >> dec
+    Array.length
 
 
 safeProgress : ForwardTimeline -> Progress -> Progress
