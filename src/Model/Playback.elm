@@ -706,8 +706,14 @@ eventToInfoColorChange { blockNumber, index, color } =
 stepForward : Int -> ForwardTimeline -> ( Int, Action )
 stepForward i timeline =
     let
+        timelineLen =
+            Array.length timeline
+
+        stepLen =
+            (timelineLen // 120) |> max 1 |> min stepLength
+
         newProgress =
-            i + stepLength |> safeProgress timeline
+            i + stepLen |> safeProgress timeline
 
         cs =
             Array.slice i newProgress timeline
