@@ -27,13 +27,13 @@ main =
         , view = View.view
         , subscriptions = subscriptions
         , onUrlChange =
-            --\_ -> NoOp
-            \i ->
-                let
-                    _ =
-                        Debug.log "urlChanged" i
-                in
-                NoOp
+            --\i ->
+            --let
+            --    _ =
+            --        Debug.log "urlChanged" i
+            --in
+            --NoOp
+            \_ -> NoOp
         , onUrlRequest =
             --\i ->
             --    let
@@ -51,10 +51,10 @@ main =
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init { winW, winH } url key =
-    let
-        _ =
-            Debug.log "initUrl" url
-    in
+    --let
+    --    _ =
+    --        Debug.log "initUrl" url
+    --in
     ( { initModel | winSize = ( winW, winH ), urlKey = Just key }
     , Rpc.openSocket
     )
